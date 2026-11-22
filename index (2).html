@@ -1,0 +1,1438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Star Evolution</title>
+<style>
+:root{--bg:#0d0f1a;--panel:#171a2b;--panel2:#20243a;--line:#2f3552;--text:#eceaf6;--dim:#9aa0bd;--gold:#e8b84a;--accent:#7c8cff;--bad:#ff6b6b;--good:#5ad08a;
+--sideA:#e8b84a;--sideB:#8a6bd6;--land:#5a4a2a;--water:#16324d;--tile:#252a44}
+html.cb{--sideA:#0072B2;--sideB:#E69F00;--accent:#56B4E9;--good:#009E73;--bad:#D55E00}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+#app{height:100dvh;display:flex;flex-direction:column;max-width:1100px;margin:0 auto}
+.screen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.9rem;padding:1rem 16px;overflow:auto;text-align:center}
+.logo{font-weight:800;letter-spacing:.18em;font-size:clamp(1.7rem,8vw,3rem);background:linear-gradient(90deg,#ffe29a,#e8b84a,#9b86ff);-webkit-background-clip:text;background-clip:text;color:transparent;margin:0}
+.sub{color:var(--dim);margin:0;font-size:.95rem}
+.hero{width:min(320px,70vw);height:auto}
+.menu{display:flex;flex-direction:column;gap:.6rem;width:min(340px,100%)}
+button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:.8rem 1rem;min-height:48px;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--accent)}button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button.primary{background:linear-gradient(180deg,#5b6cff,#4453d8);border-color:#7c8cff;font-weight:700}
+button.dim{opacity:.55}button:disabled{opacity:.4;cursor:not-allowed}
+button.small{min-height:40px;padding:.4rem .7rem;font-size:.9rem}
+.cards{display:flex;flex-wrap:wrap;gap:.8rem;justify-content:center;width:100%}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1rem;width:min(300px,100%);text-align:left;cursor:pointer}
+.card:hover{border-color:var(--accent)}.card h3{margin:.3rem 0}.card ul{margin:.3rem 0 0;padding-left:1.1rem;color:var(--dim);font-size:.9rem}
+.form{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1rem;width:min(440px,100%);text-align:left;display:flex;flex-direction:column;gap:.8rem}
+.row{display:flex;align-items:center;gap:.6rem;justify-content:space-between;flex-wrap:wrap}
+.row label{display:flex;align-items:center;gap:.5rem}.row input[type=range]{flex:1;min-width:120px}
+input[type=checkbox]{width:22px;height:22px}
+.note{color:var(--dim);font-size:.85rem}
+table.keys{border-collapse:collapse;width:100%;font-size:.9rem}table.keys td{padding:.2rem .3rem;border-bottom:1px solid var(--line)}kbd{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:0 .4rem}
+/* match */
+.match{flex:1;display:flex;flex-direction:column;min-height:0}
+.top{display:flex;gap:.5rem;align-items:center;justify-content:space-between;padding:.4rem 10px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.score{display:flex;gap:.4rem;align-items:center;font-weight:700}.score .sw{width:14px;height:14px;display:inline-block}
+.pill{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:.1rem .6rem;font-size:.9rem}
+.turnpill{font-weight:700}
+.boardwrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:4px}
+svg.board{width:100%;height:100%;max-height:100%;touch-action:manipulation}
+.hint{background:#2a2f55;border-top:1px solid var(--accent);padding:.4rem 10px;font-size:.9rem;display:flex;gap:.6rem;align-items:center;justify-content:space-between}
+.panel{background:var(--panel);border-top:1px solid var(--line);padding:.5rem 10px calc(.5rem + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:.4rem}
+.uinfo{display:flex;gap:.8rem;flex-wrap:wrap;align-items:center;font-size:.9rem}
+.bar{height:8px;background:#000;border-radius:5px;overflow:hidden;width:90px;display:inline-block;vertical-align:middle}.bar i{display:block;height:100%;background:var(--good)}.bar.chi i{background:var(--accent)}
+.actions{display:flex;gap:.4rem;flex-wrap:wrap}
+.actions button{flex:1 1 auto;min-width:76px;padding:.4rem .5rem;font-size:.9rem}
+.actions button.sel{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold) inset}
+.actions button.pulse{animation:pulse 1.1s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 4px rgba(124,140,255,.55)}}
+.log{font-size:.8rem;color:var(--dim);max-height:3.9em;overflow:hidden;display:flex;flex-direction:column-reverse}
+.log .points{color:var(--gold)}.log .kill{color:var(--bad)}.log .level{color:var(--good)}
+.overlay{position:fixed;inset:0;background:rgba(5,6,12,.78);display:flex;align-items:center;justify-content:center;padding:16px;z-index:5}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1.2rem;max-width:420px;width:100%;display:flex;flex-direction:column;gap:.8rem;text-align:center}
+.modal h2{margin:0}
+#toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);background:#000c;border:1px solid var(--line);padding:.5rem .9rem;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:9;max-width:90vw;text-align:center}
+#toast.on{opacity:1}
+.end td,.end th{padding:.2rem .6rem}.end table{margin:0 auto}
+@media (min-width:900px){.match{flex-direction:row;flex-wrap:wrap}.top{width:100%}.boardwrap{flex:1 1 60%}.side{flex:0 0 330px;display:flex;flex-direction:column;justify-content:flex-end}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+</style>
+</head>
+<body>
+<div id="app" aria-live="polite"></div>
+<div id="toast" role="status"></div>
+<script>
+// Star Evolution web slice - rules table. ALL NUMBERS ARE PLACEHOLDERS until playtests.
+// Plain JS (not .json) so the game opens by double-click; the content is pure data.
+(function(G){var SE=G.SE=G.SE||{data:{}};
+SE.data.rules={
+  version:"web 0.1 (Pass A)",
+  expCurve:[0,2,6,15,31],          // from data/exp.json: level 1..5
+  perHitExp:1, killExp:1,
+  chestLevels:1, claimLevels:1, bossLevelUp:1,
+  perLevel:{atk:1,maxHp:1,def:1},  // each level (from the sheet; +1 DEF is also per level)
+  grey:{base:5,perLevel:5,cap:25,range:3,ignoreDef:false},  // grey attack: free, always available, flat damage by level
+  levelBonus:{3:{chiP:2,chiS:2}},  // one-time bonus on reaching level 3: +2 to both chi reserves
+  claimDamageMult:2,               // claim costs 2 x level HP, refused if it would defeat the unit
+  chiRegen:"full",                // chi refills fully at the start of each new turn (faster for mobile); a number = chi regained per turn
+  damageSpread:1,                  // each hit varies by -spread..+spread (min 1)
+  points:{land:10,kill:1,chestPerLevel:1,miniBossMult:2,uniqueBossMult:3,npcTalk:5},
+  defaults:{pointLimit:75,clockMin:10,roundLimit:25,respawn:true,firstSide:"random"},
+  limits:{pointMin:50,pointMax:300,clockMin:5,clockMax:20,roundMin:5,roundMax:60},
+  respawnHpFrac:0.5,               // defeated units return at their start tile next own turn with this share of max HP, 0 chi
+  bossRetaliates:true
+};
+})(typeof window!=='undefined'?window:globalThis);
+
+</script>
+<script>
+// Coloured attacks (chi: p=primary s=secondary). Grey attack is defined in rules.js.
+// GENERATED by tools/sheet_to_web.py from the unit sheet. Edit the sheet and re-run, or edit here for quick tests.
+(function(G){var SE=G.SE=G.SE||{data:{}};
+SE.data.techniques={
+ "divine_hammer_a1": {
+  "name": "God Fist",
+  "chi": "p",
+  "cost": 2,
+  "power": 23,
+  "flat": false,
+  "range": 2,
+  "unlock": 1,
+  "selfHp": 0
+ },
+ "divine_hammer_a2": {
+  "name": "Trinity Blast",
+  "chi": "p",
+  "cost": 4,
+  "power": 27,
+  "flat": false,
+  "range": 3,
+  "unlock": 3,
+  "selfHp": 0
+ },
+ "nameless_a1": {
+  "name": "Ki Waves",
+  "chi": "p",
+  "cost": 2,
+  "power": 23,
+  "flat": false,
+  "range": 2,
+  "unlock": 1,
+  "selfHp": 0
+ },
+ "nameless_a2": {
+  "name": "Sword Drop",
+  "chi": "p",
+  "cost": 5,
+  "power": 28,
+  "flat": false,
+  "range": 4,
+  "unlock": 3,
+  "selfHp": 0
+ },
+ "star_breaker_a1": {
+  "name": "Star Strike",
+  "chi": "p",
+  "cost": 2,
+  "power": 24,
+  "flat": false,
+  "range": 2,
+  "unlock": 1,
+  "selfHp": 0
+ },
+ "star_breaker_a2": {
+  "name": "Long Range Ki Blast",
+  "chi": "p",
+  "cost": 6,
+  "power": 28,
+  "flat": false,
+  "range": 4,
+  "unlock": 3,
+  "selfHp": 0
+ },
+ "divine_flash_a1": {
+  "name": "Wild Kick",
+  "chi": "p",
+  "cost": 2,
+  "power": 23,
+  "flat": false,
+  "range": 2,
+  "unlock": 1,
+  "selfHp": 0
+ },
+ "divine_flash_a2": {
+  "name": "Multi- KickStrike",
+  "chi": "p",
+  "cost": 4,
+  "power": 26,
+  "flat": false,
+  "range": 3,
+  "unlock": 3,
+  "selfHp": 0
+ },
+ "divine_guardian_a1": {
+  "name": "Sliding Kick",
+  "chi": "p",
+  "cost": 2,
+  "power": 22,
+  "flat": false,
+  "range": 3,
+  "unlock": 1,
+  "selfHp": 0
+ },
+ "divine_guardian_a2": {
+  "name": "Shield Slide",
+  "chi": "p",
+  "cost": 4,
+  "power": 25,
+  "flat": false,
+  "range": 3,
+  "unlock": 3,
+  "selfHp": 0
+ },
+ "fake_demon_lord_a1": {
+  "name": "Chaos Strike",
+  "chi": "p",
+  "cost": 2,
+  "power": 24,
+  "flat": false,
+  "range": 2,
+  "unlock": 1,
+  "selfHp": 3
+ },
+ "fake_demon_lord_a2": {
+  "name": "Chaos Burst",
+  "chi": "p",
+  "cost": 5,
+  "power": 29,
+  "flat": false,
+  "range": 3,
+  "unlock": 3,
+  "selfHp": 6
+ },
+ "silis_a1": {
+  "name": "Lance Thrust",
+  "chi": "p",
+  "cost": 2,
+  "power": 25,
+  "flat": false,
+  "range": 2,
+  "unlock": 1,
+  "selfHp": 3
+ },
+ "silis_a2": {
+  "name": "Chaos Ki Waves",
+  "chi": "p",
+  "cost": 5,
+  "power": 30,
+  "flat": false,
+  "range": 5,
+  "unlock": 3,
+  "selfHp": 6
+ },
+ "chaos_knight_a1": {
+  "name": "Sword Cleave",
+  "chi": "p",
+  "cost": 2,
+  "power": 28,
+  "flat": false,
+  "range": 2,
+  "unlock": 1,
+  "selfHp": 3
+ },
+ "chaos_knight_a2": {
+  "name": "Chaos P. Explosion",
+  "chi": "p",
+  "cost": 4,
+  "power": 32,
+  "flat": false,
+  "range": 4,
+  "unlock": 3,
+  "selfHp": 6
+ },
+ "cpt_machine_slave_no_1_a1": {
+  "name": "Cannon Blast",
+  "chi": "p",
+  "cost": 2,
+  "power": 22,
+  "flat": false,
+  "range": 2,
+  "unlock": 1,
+  "selfHp": 3
+ },
+ "cpt_machine_slave_no_1_a2": {
+  "name": "Blood Cannon",
+  "chi": "p",
+  "cost": 6,
+  "power": 24,
+  "flat": false,
+  "range": 24,
+  "unlock": 3,
+  "selfHp": 6
+ },
+ "cpt_machine_slave_no_2_a1": {
+  "name": "Blood Cannon",
+  "chi": "p",
+  "cost": 3,
+  "power": 21,
+  "flat": false,
+  "range": 3,
+  "unlock": 1,
+  "selfHp": 3
+ },
+ "cpt_machine_slave_no_2_a2": {
+  "name": "Long Range C.Blast",
+  "chi": "p",
+  "cost": 5,
+  "power": 23,
+  "flat": false,
+  "range": 5,
+  "unlock": 3,
+  "selfHp": 6
+ },
+ "imaginary_snake_a1": {
+  "name": "Corrupted Strike",
+  "chi": "p",
+  "cost": 1,
+  "power": 26,
+  "flat": false,
+  "range": 1,
+  "unlock": 1,
+  "selfHp": 0
+ },
+ "imaginary_snake_a2": {
+  "name": "Snake Viper Volley",
+  "chi": "p",
+  "cost": 6,
+  "power": 19,
+  "flat": false,
+  "range": 6,
+  "unlock": 3,
+  "selfHp": 0
+ },
+ "malgan_a1": {
+  "name": "Snake Bomb",
+  "chi": "p",
+  "cost": 3,
+  "power": 20,
+  "flat": false,
+  "range": 3,
+  "unlock": 1,
+  "selfHp": 0
+ },
+ "malgan_a2": {
+  "name": "Unholy Snake Barrage",
+  "chi": "p",
+  "cost": 5,
+  "power": 23,
+  "flat": false,
+  "range": 5,
+  "unlock": 3,
+  "selfHp": 0
+ },
+ "perfect_copy_a1": {
+  "name": "Silver Buster",
+  "chi": "p",
+  "cost": 2,
+  "power": 20,
+  "flat": false,
+  "range": 2,
+  "unlock": 1,
+  "selfHp": 0
+ },
+ "perfect_copy_a2": {
+  "name": "Copy Buster",
+  "chi": "p",
+  "cost": 5,
+  "power": 24,
+  "flat": false,
+  "range": 5,
+  "unlock": 3,
+  "selfHp": 0
+ },
+ "samantha_a1": {
+  "name": "Cheap Shot",
+  "chi": "p",
+  "cost": 2,
+  "power": 20,
+  "flat": false,
+  "range": 2,
+  "unlock": 1,
+  "selfHp": 0
+ },
+ "samantha_a2": {
+  "name": "Chimeric Explosion",
+  "chi": "p",
+  "cost": 4,
+  "power": 25,
+  "flat": false,
+  "range": 4,
+  "unlock": 3,
+  "selfHp": 0
+ },
+ "chimera_machine_slave_a1": {
+  "name": "Fresh Blade",
+  "chi": "p",
+  "cost": 2,
+  "power": 19,
+  "flat": false,
+  "range": 2,
+  "unlock": 1,
+  "selfHp": 0
+ },
+ "chimera_machine_slave_a2": {
+  "name": "Deformed Cannon",
+  "chi": "p",
+  "cost": 4,
+  "power": 25,
+  "flat": false,
+  "range": 4,
+  "unlock": 3,
+  "selfHp": 0
+ }
+};
+})(typeof window!=='undefined'?window:globalThis);
+
+</script>
+<script>
+// Factions and units
+// GENERATED by tools/sheet_to_web.py from the unit sheet. Edit the sheet and re-run, or edit here for quick tests.
+(function(G){var SE=G.SE=G.SE||{data:{}};
+SE.data.units={
+ "factions": {
+  "star_warriors": {
+   "name": "Star Warriors",
+   "shape": "square",
+   "color": "#7ec8ff",
+   "roster": [
+    "divine_hammer",
+    "nameless",
+    "star_breaker"
+   ],
+   "pool": [
+    "divine_flash",
+    "divine_guardian"
+   ]
+  },
+  "chaos_warriors": {
+   "name": "Chaos Warriors",
+   "shape": "circle",
+   "color": "#ff8f8f",
+   "roster": [
+    "fake_demon_lord",
+    "silis",
+    "chaos_knight"
+   ],
+   "pool": [
+    "cpt_machine_slave_no_1",
+    "cpt_machine_slave_no_2"
+   ]
+  },
+  "cultists": {
+   "name": "Cultists",
+   "shape": "diamond",
+   "color": "#cfcfcf",
+   "roster": [
+    "imaginary_snake",
+    "malgan",
+    "perfect_copy"
+   ],
+   "pool": [
+    "samantha",
+    "chimera_machine_slave"
+   ]
+  }
+ },
+ "units": {
+  "divine_hammer": {
+   "name": "Divine Hammer",
+   "faction": "star_warriors",
+   "hp": 30,
+   "atk": 0,
+   "def": 15,
+   "move": 3,
+   "chiP": 3,
+   "chiS": 3,
+   "techs": [
+    "divine_hammer_a1",
+    "divine_hammer_a2",
+    "grey"
+   ],
+   "instincts": []
+  },
+  "nameless": {
+   "name": "Nameless",
+   "faction": "star_warriors",
+   "hp": 30,
+   "atk": 0,
+   "def": 14,
+   "move": 3,
+   "chiP": 3,
+   "chiS": 3,
+   "techs": [
+    "nameless_a1",
+    "nameless_a2",
+    "grey"
+   ],
+   "instincts": []
+  },
+  "star_breaker": {
+   "name": "Star Breaker",
+   "faction": "star_warriors",
+   "hp": 30,
+   "atk": 0,
+   "def": 13,
+   "move": 3,
+   "chiP": 4,
+   "chiS": 4,
+   "techs": [
+    "star_breaker_a1",
+    "star_breaker_a2",
+    "grey"
+   ],
+   "instincts": []
+  },
+  "divine_flash": {
+   "name": "Divine Flash",
+   "faction": "star_warriors",
+   "hp": 30,
+   "atk": 0,
+   "def": 14,
+   "move": 3,
+   "chiP": 3,
+   "chiS": 3,
+   "techs": [
+    "divine_flash_a1",
+    "divine_flash_a2",
+    "grey"
+   ],
+   "instincts": []
+  },
+  "divine_guardian": {
+   "name": "Divine Guardian",
+   "faction": "star_warriors",
+   "hp": 30,
+   "atk": 0,
+   "def": 16,
+   "move": 3,
+   "chiP": 3,
+   "chiS": 4,
+   "techs": [
+    "divine_guardian_a1",
+    "divine_guardian_a2",
+    "grey"
+   ],
+   "instincts": []
+  },
+  "fake_demon_lord": {
+   "name": "Fake Demon Lord",
+   "faction": "chaos_warriors",
+   "hp": 50,
+   "atk": 0,
+   "def": 5,
+   "move": 3,
+   "chiP": 4,
+   "chiS": 4,
+   "techs": [
+    "fake_demon_lord_a1",
+    "fake_demon_lord_a2",
+    "grey"
+   ],
+   "instincts": []
+  },
+  "silis": {
+   "name": "Silis",
+   "faction": "chaos_warriors",
+   "hp": 50,
+   "atk": 0,
+   "def": 4,
+   "move": 3,
+   "chiP": 4,
+   "chiS": 4,
+   "techs": [
+    "silis_a1",
+    "silis_a2",
+    "grey"
+   ],
+   "instincts": []
+  },
+  "chaos_knight": {
+   "name": "Chaos Knight",
+   "faction": "chaos_warriors",
+   "hp": 50,
+   "atk": 0,
+   "def": 5,
+   "move": 3,
+   "chiP": 4,
+   "chiS": 3,
+   "techs": [
+    "chaos_knight_a1",
+    "chaos_knight_a2",
+    "grey"
+   ],
+   "instincts": []
+  },
+  "cpt_machine_slave_no_1": {
+   "name": "Cpt. Machine Slave NO.1",
+   "faction": "chaos_warriors",
+   "hp": 50,
+   "atk": 0,
+   "def": 4,
+   "move": 3,
+   "chiP": 4,
+   "chiS": 5,
+   "techs": [
+    "cpt_machine_slave_no_1_a1",
+    "cpt_machine_slave_no_1_a2",
+    "grey"
+   ],
+   "instincts": []
+  },
+  "cpt_machine_slave_no_2": {
+   "name": "Cpt. Machine Slave NO.2",
+   "faction": "chaos_warriors",
+   "hp": 50,
+   "atk": 0,
+   "def": 6,
+   "move": 3,
+   "chiP": 4,
+   "chiS": 3,
+   "techs": [
+    "cpt_machine_slave_no_2_a1",
+    "cpt_machine_slave_no_2_a2",
+    "grey"
+   ],
+   "instincts": []
+  },
+  "imaginary_snake": {
+   "name": "Imaginary Snake",
+   "faction": "cultists",
+   "hp": 40,
+   "atk": 0,
+   "def": 10,
+   "move": 3,
+   "chiP": 4,
+   "chiS": 4,
+   "techs": [
+    "imaginary_snake_a1",
+    "imaginary_snake_a2",
+    "grey"
+   ],
+   "instincts": []
+  },
+  "malgan": {
+   "name": "Malgan",
+   "faction": "cultists",
+   "hp": 40,
+   "atk": 0,
+   "def": 9,
+   "move": 3,
+   "chiP": 4,
+   "chiS": 4,
+   "techs": [
+    "malgan_a1",
+    "malgan_a2",
+    "grey"
+   ],
+   "instincts": []
+  },
+  "perfect_copy": {
+   "name": "Perfect Copy",
+   "faction": "cultists",
+   "hp": 40,
+   "atk": 0,
+   "def": 10,
+   "move": 3,
+   "chiP": 4,
+   "chiS": 4,
+   "techs": [
+    "perfect_copy_a1",
+    "perfect_copy_a2",
+    "grey"
+   ],
+   "instincts": []
+  },
+  "samantha": {
+   "name": "Samantha",
+   "faction": "cultists",
+   "hp": 40,
+   "atk": 0,
+   "def": 10,
+   "move": 3,
+   "chiP": 4,
+   "chiS": 4,
+   "techs": [
+    "samantha_a1",
+    "samantha_a2",
+    "grey"
+   ],
+   "instincts": []
+  },
+  "chimera_machine_slave": {
+   "name": "Chimera Machine Slave",
+   "faction": "cultists",
+   "hp": 40,
+   "atk": 0,
+   "def": 9,
+   "move": 3,
+   "chiP": 4,
+   "chiS": 4,
+   "techs": [
+    "chimera_machine_slave_a1",
+    "chimera_machine_slave_a2",
+    "grey"
+   ],
+   "instincts": []
+  }
+ },
+ "boss": {
+  "id": "mini_boss",
+  "name": "Warden",
+  "hp": 50,
+  "atk": 6,
+  "def": 2,
+  "level": 2
+ }
+};
+})(typeof window!=='undefined'?window:globalThis);
+
+</script>
+<script>
+// 9 x 7 flat-top board, odd-q offset coords [col,row]. Point-symmetric: spawn lists are mirror images in order, so unit i sits on the mirror tile of the other side's unit i.
+(function(G){var SE=G.SE=G.SE||{data:{}};
+SE.data.map={
+  cols:9,rows:7,
+  spawns:{A:[[0,2],[0,3],[0,4]],B:[[8,4],[8,3],[8,2]]},
+  water:[[4,0],[4,6],[1,5],[7,0]],
+  land:[[2,1],[6,5],[2,5],[6,1],[3,3],[5,2],[4,1],[4,5]],
+  chests:[{at:[1,1],level:1},{at:[7,4],level:1},{at:[3,5],level:1},{at:[5,0],level:1}],
+  npc:{at:[4,3],name:"Old Hermit"},
+  bosses:[[3,1],[5,4]]
+};
+})(typeof window!=='undefined'?window:globalThis);
+
+</script>
+<script>
+(function(G){var SE=G.SE=G.SE||{data:{}};
+var H=SE.hex={};
+var DIRS=[[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]]; // SE, NE, N, NW, SW, S (flat-top)
+H.DIRS=DIRS;
+H.key=function(q,r){return q+","+r;};
+H.fromOffset=function(c,row){return {q:c,r:row-((c-(c&1))>>1)};};
+H.toOffset=function(q,r){return {c:q,row:r+((q-(q&1))>>1)};};
+H.dist=function(a,b){var dq=a.q-b.q,dr=a.r-b.r;return Math.max(Math.abs(dq),Math.abs(dr),Math.abs(dq+dr));};
+H.neighbors=function(h){return DIRS.map(function(d){return {q:h.q+d[0],r:h.r+d[1]};});};
+// BFS: returns {key:{q,r,d}} of tiles reachable within maxSteps (includes start at d=0).
+H.reachable=function(start,maxSteps,passable){
+  var out={},k0=H.key(start.q,start.r);out[k0]={q:start.q,r:start.r,d:0};
+  var frontier=[start];
+  for(var step=1;step<=maxSteps;step++){
+    var next=[];
+    frontier.forEach(function(h){H.neighbors(h).forEach(function(n){
+      var k=H.key(n.q,n.r);if(out[k]||!passable(n.q,n.r))return;
+      out[k]={q:n.q,r:n.r,d:step};next.push(n);});});
+    frontier=next;
+  }
+  return out;
+};
+H.pixel=function(q,r,size){return {x:size*1.5*q,y:size*Math.sqrt(3)*(r+q/2)};};
+})(typeof window!=='undefined'?window:globalThis);
+
+</script>
+<script>
+(function(G){var SE=G.SE=G.SE||{data:{}};
+var H=SE.hex,R=SE.rules={};
+function D(){return SE.data;}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+R.rng=mulberry32;
+R.other=function(s){return s==="A"?"B":"A";};
+R.maxLevel=function(){return D().rules.expCurve.length;};
+R.levelFromExp=function(exp){var c=D().rules.expCurve,l=1;for(var i=1;i<c.length;i++)if(exp>=c[i])l=i+1;return l;};
+function log(st,msg,kind){st.log.push({t:st.log.length,msg:msg,kind:kind||"info",round:st.round});}
+R.syncLevel=function(st,u){
+  var want=R.levelFromExp(u.exp),pl=D().rules.perLevel;
+  while(u.level<want){u.level++;u.atk+=pl.atk;u.maxHp+=pl.maxHp;u.hp+=pl.maxHp;u.def+=(pl.def||0);
+    var lb=(D().rules.levelBonus||{})[u.level];if(lb){['p','s'].forEach(function(k){var n=lb['chi'+k.toUpperCase()]||0;u.maxChi[k]+=n;u.chi[k]+=n;});}log(st,u.name+" reaches level "+u.level+"!","level");}
+};
+R.grantExp=function(st,u,n){u.exp+=n;R.syncLevel(st,u);};
+R.grantLevels=function(st,u,n){
+  var c=D().rules.expCurve,target=Math.min(R.maxLevel(),u.level+n);
+  u.exp=Math.max(u.exp,c[target-1]);R.syncLevel(st,u);
+};
+function addPoints(st,side,n,why){st.points[side]+=n;log(st,(side==="A"?st.names.A:st.names.B)+" +"+n+" star points ("+why+")","points");}
+
+R.defaultOpts=function(){var d=D().rules.defaults;return {faction:Object.keys(D().units.factions)[0],pointLimit:d.pointLimit,clockMin:d.clockMin,roundLimit:d.roundLimit,respawn:d.respawn,firstSide:d.firstSide,seed:1,rules:"basic",hints:true};};
+
+R.createMatch=function(o){
+  o=Object.assign(R.defaultOpts(),o||{});
+  var U=D().units,M=D().map,facs=Object.keys(U.factions);
+  var fa=o.faction,others=facs.filter(function(f){return f!==fa;}),fb=o.opponent||others[Math.floor(R.rng((o.seed||1)+7919)()*others.length)];
+  var st={opts:o,rng:R.rng(o.seed),turn:"A",round:1,points:{A:0,B:0},over:false,winner:null,endReason:null,
+    log:[],units:[],land:{},claimed:{A:{},B:{}},chests:{},talked:{A:false,B:false},
+    factions:{A:fa,B:fb},names:{A:U.factions[fa].name,B:U.factions[fb].name},
+    cols:M.cols,rows:M.rows,water:{},landTiles:[],npc:null,nextId:1};
+  M.water.forEach(function(p){var h=H.fromOffset(p[0],p[1]);st.water[H.key(h.q,h.r)]=1;});
+  M.land.forEach(function(p){var h=H.fromOffset(p[0],p[1]),k=H.key(h.q,h.r);st.land[k]=null;st.landTiles.push(k);});
+  M.chests.forEach(function(c){var h=H.fromOffset(c.at[0],c.at[1]);st.chests[H.key(h.q,h.r)]=c.level;});
+  var nh=H.fromOffset(M.npc.at[0],M.npc.at[1]);st.npc={q:nh.q,r:nh.r,name:M.npc.name};
+  [["A",fa],["B",fb]].forEach(function(sf){
+    var side=sf[0],roster=o["roster"+side]||U.factions[sf[1]].roster;
+    roster.forEach(function(id,i){
+      var d=U.units[id],sp=M.spawns[side][i],h=H.fromOffset(sp[0],sp[1]);
+      st.units.push({id:st.nextId++,uid:id,side:side,faction:sf[1],name:d.name,hp:d.hp,maxHp:d.hp,atk:d.atk,def:d.def,
+        chi:{p:d.chiP,s:d.chiS},maxChi:{p:d.chiP,s:d.chiS},move:d.move,techs:d.techs.slice(),level:1,exp:0,q:h.q,r:h.r,moved:false,acted:false,idle:false,dead:false,boss:false,home:{q:h.q,r:h.r}});});
+  });
+  var B=U.boss;
+  M.bosses.forEach(function(p){var h=H.fromOffset(p[0],p[1]);
+    st.units.push({id:st.nextId++,uid:B.id,side:"N",faction:"neutral",name:B.name,hp:B.hp,maxHp:B.hp,atk:B.atk,def:B.def,chi:{p:0,s:0},maxChi:{p:0,s:0},move:0,techs:[],
+      level:B.level,exp:0,q:h.q,r:h.r,moved:true,acted:true,idle:true,dead:false,boss:true});});
+  st.turn=o.firstSide==='A'||o.firstSide==='B'?o.firstSide:(st.rng()<0.5?'A':'B');
+  log(st,"Match start: "+st.names.A+" vs "+st.names.B+". First to "+o.pointLimit+" star points wins. "+st.names[st.turn]+" moves first.","info");
+  return st;
+};
+
+R.alive=function(st,side){return st.units.filter(function(u){return !u.dead&&u.side===side;});};
+R.unitAt=function(st,q,r){for(var i=0;i<st.units.length;i++){var u=st.units[i];if(!u.dead&&u.q===q&&u.r===r)return u;}return null;};
+R.unitById=function(st,id){return st.units.filter(function(u){return u.id===id;})[0]||null;};
+R.inBoard=function(st,q,r){var o=H.toOffset(q,r);return o.c>=0&&o.c<st.cols&&o.row>=0&&o.row<st.rows;};
+R.passable=function(st,q,r){
+  if(!R.inBoard(st,q,r))return false;if(st.water[H.key(q,r)])return false;
+  if(st.npc.q===q&&st.npc.r===r)return false;return !R.unitAt(st,q,r);};
+R.tech=function(id){
+  if(id==="grey"){var g=D().rules.grey;return {id:"grey",name:"Grey",chi:"p",cost:0,power:0,range:g.range,unlock:1,grey:true,text:"Free attack with range "+g.range+". Damage grows with level."};}
+  return D().techniques[id];};
+R.greyPower=function(u){var g=D().rules.grey;return Math.min(g.cap,g.base+g.perLevel*(u.level-1));};
+R.basePower=function(u,tech){return tech.grey?R.greyPower(u):(tech.flat?tech.power:u.atk+tech.power);};
+R.canUse=function(u,tech){return u.level>=(tech.unlock||1)&&(u.chi[tech.chi||"p"]||0)>=tech.cost;};
+R.canAct=function(st,u){return !st.over&&!u.dead&&!u.boss&&u.side===st.turn;};
+
+R.legalMoves=function(st,u){
+  if(!R.canAct(st,u)||u.moved||u.acted)return [];
+  var reach=H.reachable(u,u.move,function(q,r){return R.passable(st,q,r);});
+  return Object.keys(reach).filter(function(k){return reach[k].d>0;}).map(function(k){return reach[k];});
+};
+R.move=function(st,u,q,r){
+  var ok=R.legalMoves(st,u).some(function(m){return m.q===q&&m.r===r;});
+  if(!ok)return {ok:false,msg:"Can't move there."};
+  u.q=q;u.r=r;u.moved=true;return {ok:true};
+};
+
+R.damageOf=function(u,t,tech){var ig=tech.grey?D().rules.grey.ignoreDef:tech.ignoreDef;return Math.max(1,R.basePower(u,tech)-(ig?0:t.def));};
+R.targets=function(st,u,techId){
+  var tech=R.tech(techId);if(!R.canAct(st,u)||u.acted||!R.canUse(u,tech)||(tech.selfHp&&u.hp-tech.selfHp<=0))return [];
+  return st.units.filter(function(t){return !t.dead&&t.side!==u.side&&H.dist(u,t)<=tech.range;});
+};
+R.attack=function(st,u,techId,targetId){
+  var tech=R.tech(techId),t=R.unitById(st,targetId);
+  if(!t||R.targets(st,u,techId).indexOf(t)<0)return {ok:false,msg:"Can't attack that."};
+  var sp=D().rules.damageSpread||0,dmg=Math.max(1,R.damageOf(u,t,tech)+(sp?Math.floor(st.rng()*(2*sp+1))-sp:0));
+  u.chi[tech.chi||"p"]-=tech.cost;
+  if(tech.selfHp){u.hp-=tech.selfHp;log(st,u.name+" loses "+tech.selfHp+" HP using "+tech.name+".","hurt");}
+  t.hp-=dmg;u.acted=true;
+  log(st,u.name+" uses "+tech.name+" on "+t.name+" for "+dmg+".","hit");
+  var killed=false;
+  R.grantExp(st,u,D().rules.perHitExp);
+  if(t.hp<=0){
+    t.hp=0;t.dead=true;killed=true;var P=D().rules.points;
+    log(st,t.name+" is defeated!","kill");
+    if(t.boss){addPoints(st,u.side,P.miniBossMult*t.level,"mini boss");R.grantLevels(st,u,D().rules.bossLevelUp);}
+    else{addPoints(st,u.side,P.kill,"kill");R.grantExp(st,u,D().rules.killExp);}
+  }
+  R.checkEnd(st);
+  return {ok:true,dmg:dmg,killed:killed};
+};
+
+R.claimCost=function(u){return D().rules.claimDamageMult*u.level;};
+R.canClaim=function(st,u){
+  if(!R.canAct(st,u)||u.acted)return {ok:false,msg:"Can't act."};
+  var k=H.key(u.q,u.r);
+  if(!(k in st.land))return {ok:false,msg:"Stand on a land tile to claim it."};
+  if(st.land[k]===u.side)return {ok:false,msg:"You already hold this land."};
+  if(u.hp-R.claimCost(u)<=0)return {ok:false,msg:"You don't have enough HP to claim (costs "+R.claimCost(u)+")."};
+  return {ok:true};
+};
+R.claim=function(st,u){
+  var c=R.canClaim(st,u);if(!c.ok)return c;
+  var k=H.key(u.q,u.r),prev=st.land[k],cost=R.claimCost(u);
+  u.hp-=cost;st.land[k]=u.side;u.acted=true;
+  log(st,u.name+" claims land (-"+cost+" HP)"+(prev?" from the enemy":"")+".","claim");
+  addPoints(st,u.side,D().rules.points.land,prev?"land stolen":"land");
+  if(!st.claimed[u.side][k]){st.claimed[u.side][k]=true;R.grantLevels(st,u,D().rules.claimLevels);} // level only once per tile per side
+  R.checkEnd(st);return {ok:true};
+};
+
+R.canOpen=function(st,u){
+  if(!R.canAct(st,u)||u.acted)return {ok:false,msg:"Can't act."};
+  if(!(H.key(u.q,u.r) in st.chests))return {ok:false,msg:"No chest here."};return {ok:true};
+};
+R.open=function(st,u){
+  var c=R.canOpen(st,u);if(!c.ok)return c;
+  var k=H.key(u.q,u.r),lv=st.chests[k];delete st.chests[k];u.acted=true;
+  log(st,u.name+" opens a chest.","chest");
+  addPoints(st,u.side,D().rules.points.chestPerLevel*lv,"chest");
+  R.grantLevels(st,u,D().rules.chestLevels);R.checkEnd(st);return {ok:true};
+};
+
+R.canTalk=function(st,u){
+  if(!R.canAct(st,u)||u.acted)return {ok:false,msg:"Can't act."};
+  if(H.dist(u,st.npc)>1)return {ok:false,msg:"Stand next to the "+st.npc.name+" to talk."};
+  if(st.talked[u.side])return {ok:false,msg:"Your side already spoke with the "+st.npc.name+"."};return {ok:true};
+};
+R.talk=function(st,u){
+  var c=R.canTalk(st,u);if(!c.ok)return c;
+  st.talked[u.side]=true;u.acted=true;log(st,u.name+" speaks with the "+st.npc.name+".","talk");
+  addPoints(st,u.side,D().rules.points.npcTalk,"talked to NPC");R.checkEnd(st);return {ok:true};
+};
+
+R.landCount=function(st,side){return st.landTiles.filter(function(k){return st.land[k]===side;}).length;};
+R.hpSum=function(st,side){return R.alive(st,side).reduce(function(a,u){return a+u.hp;},0);};
+R.finish=function(st,winner,reason){if(st.over)return;st.over=true;st.winner=winner;st.endReason=reason;
+  log(st,winner?(st.names[winner]+" wins ("+reason+")."):"Draw ("+reason+").","end");};
+R.checkEnd=function(st){
+  if(st.over)return true;var a=R.alive(st,"A").length,b=R.alive(st,"B").length,lim=st.opts.pointLimit;
+  if(!st.opts.respawn&&a===0&&b===0){R.finish(st,null,"wipe-out");return true;}
+  if(!st.opts.respawn&&a===0){R.finish(st,"B","wipe-out");return true;}
+  if(!st.opts.respawn&&b===0){R.finish(st,"A","wipe-out");return true;}
+  var pa=st.points.A>=lim,pb=st.points.B>=lim;
+  if(pa&&pb){R.finish(st,st.points.A>=st.points.B?(st.points.A===st.points.B?null:"A"):"B","point limit");return true;}
+  if(pa){R.finish(st,"A","point limit");return true;}
+  if(pb){R.finish(st,"B","point limit");return true;}
+  return false;
+};
+// Used for clock or round limit: higher points, then land held, then total HP.
+R.endByLimit=function(st,reason){
+  if(st.over)return;
+  var cmp=[[st.points.A,st.points.B],[R.landCount(st,"A"),R.landCount(st,"B")],[R.hpSum(st,"A"),R.hpSum(st,"B")]];
+  for(var i=0;i<cmp.length;i++){if(cmp[i][0]!==cmp[i][1]){R.finish(st,cmp[i][0]>cmp[i][1]?"A":"B",reason);return;}}
+  R.finish(st,null,reason);
+};
+
+function bossPhase(st){
+  if(!D().rules.bossRetaliates)return;
+  st.units.filter(function(b){return b.boss&&!b.dead;}).forEach(function(b){
+    st.units.filter(function(t){return !t.dead&&!t.boss&&H.dist(b,t)<=1;}).forEach(function(t){
+      var d=Math.max(1,b.atk-t.def);t.hp-=d;log(st,b.name+" strikes "+t.name+" for "+d+".","hurt");
+      if(t.hp<=0){t.hp=0;t.dead=true;log(st,t.name+" falls to the "+b.name+".","kill");}
+    });});
+  R.checkEnd(st);
+}
+function respawnDead(st,side){
+  st.units.filter(function(u){return u.dead&&!u.boss&&u.side===side;}).forEach(function(u){
+    var spot=null,reach=H.reachable(u.home,3,function(q,r){return R.inBoard(st,q,r)&&!st.water[H.key(q,r)];});
+    Object.keys(reach).sort(function(a,b){return reach[a].d-reach[b].d;}).some(function(k){var t=reach[k];
+      if(!R.unitAt(st,t.q,t.r)&&!(st.npc.q===t.q&&st.npc.r===t.r)){spot=t;return true;}return false;});
+    if(!spot)return;
+    u.dead=false;u.q=spot.q;u.r=spot.r;u.hp=Math.max(1,Math.ceil(u.maxHp*D().rules.respawnHpFrac));u.chi={p:0,s:0};u.moved=true;u.acted=true;u.idle=true;
+    log(st,u.name+" returns to the field.","info");});
+}
+R.endTurn=function(st){
+  if(st.over)return;
+  var prev=st.turn;
+  if(prev==="B"){bossPhase(st);if(st.over)return;st.round++;
+    if(st.opts.roundLimit&&st.round>st.opts.roundLimit){R.endByLimit(st,"round limit");return;}}
+  st.turn=R.other(prev);
+  R.alive(st,st.turn).forEach(function(u){u.moved=false;u.acted=false;u.idle=false;var rg=D().rules.chiRegen;['p','s'].forEach(function(k){u.chi[k]=rg==="full"?u.maxChi[k]:Math.min(u.maxChi[k],u.chi[k]+rg);});});
+  if(st.opts.respawn)respawnDead(st,st.turn);
+  log(st,"Round "+st.round+": "+st.names[st.turn]+" turn.","turn");
+};
+R.allDone=function(st,side){return R.alive(st,side).every(function(u){return u.acted&&u.moved;});};
+})(typeof window!=='undefined'?window:globalThis);
+
+</script>
+<script>
+// Basic CPU: priority list with small jitter, no lookahead. (Harder Standard CPU is Pass C.)
+(function(G){var SE=G.SE=G.SE||{data:{}};
+var H=SE.hex,R=SE.rules,AI=SE.ai={};
+AI.cfg={threat:2.5,threatLow:7,jitter:7};
+function bestAttack(st,u){
+  var best=null;
+  u.techs.forEach(function(id){
+    var tech=R.tech(id);
+    R.targets(st,u,id).forEach(function(t){
+      var dmg=R.damageOf(u,t,tech),kill=dmg>=t.hp,pts=0;
+      if(kill)pts=t.boss?SE.data.rules.points.miniBossMult*t.level:SE.data.rules.points.kill;
+      var s=dmg+(kill?12+pts*2:0)+(t.boss?-3:2)-tech.cost*0.4-(tech.selfHp||0)*1.2;
+      if(!t.boss&&t.hp-dmg<=0)s+=3;
+      if(!best||s>best.s)best={s:s,type:"attack",unit:u,tech:id,target:t};
+    });});
+  return best;
+}
+function objectives(st,u){
+  var out=[],k;
+  st.landTiles.forEach(function(key){if(st.land[key]!==u.side){var p=key.split(",");out.push({q:+p[0],r:+p[1],w:st.claimed[u.side][key]?0.4:1});}});
+  for(k in st.chests){var p=k.split(",");out.push({q:+p[0],r:+p[1],w:0.8});}
+  if(!st.talked[u.side])out.push({q:st.npc.q,r:st.npc.r,w:0.9});
+  st.units.forEach(function(e){if(!e.dead&&e.side!=="N"&&e.side!==u.side)out.push({q:e.q,r:e.r,w:0.7});});
+  return out;
+}
+function threat(st,u,at){
+  var n=0;st.units.forEach(function(e){if(e.dead||e.side===u.side)return;
+    var reach=e.boss?1:e.move+Math.max.apply(null,e.techs.map(function(id){return R.tech(id).range;}));
+    if(H.dist(e,at)<=reach)n++;});return n;
+}
+function tileScore(st,u,at,objs){
+  var rules=SE.data.rules,key=H.key(at.q,at.r),s=0,hpAfter=u.hp-R.claimCost(u);
+  if(key in st.land&&st.land[key]!==u.side&&hpAfter>3)s+=st.land[key]===null?40:45;
+  if(key in st.chests)s+=26;
+  if(!st.talked[u.side]&&H.dist(at,st.npc)<=1)s+=30;
+  var ghost={q:at.q,r:at.r,side:u.side};
+  st.units.forEach(function(e){if(e.dead||e.side===u.side)return;
+    u.techs.forEach(function(id){var tech=R.tech(id);
+      if(R.canUse(u,tech)&&H.dist(at,e)<=tech.range){var dmg=R.damageOf(u,e,tech);s+=Math.min(dmg,e.hp)*0.35+(dmg>=e.hp?12:0)+(e.boss?-6:0);}});});
+  var md=99,bw=1;objs.forEach(function(o){var d=H.dist(at,o)/o.w;if(d<md)md=d;});
+  s-=md*1.4;
+  s-=threat(st,u,at)*(u.hp<u.maxHp*0.5?AI.cfg.threatLow:AI.cfg.threat);
+  s+=st.rng()*AI.cfg.jitter;return s;
+}
+AI.nextAction=function(st){
+  var side=st.turn,units=R.alive(st,side);
+  for(var i=0;i<units.length;i++){
+    var u=units[i];if(u.idle)continue;
+    if(!u.acted){
+      // Priority: a kill, then claim land (10 pts), talk (5), chest, then any attack.
+      var a=bestAttack(st,u),canKill=a&&a.target.hp<=R.damageOf(u,a.target,R.tech(a.tech));
+      var onLandOK=R.canClaim(st,u).ok&&u.hp-R.claimCost(u)>3;
+      if(canKill&&!(onLandOK&&a.target.boss))return a;
+      if(onLandOK)return {type:"claim",unit:u};
+      if(R.canTalk(st,u).ok)return {type:"talk",unit:u};
+      if(R.canOpen(st,u).ok)return {type:"open",unit:u};
+      if(a)return a;
+    }
+    if(!u.moved&&!u.acted){
+      var objs=objectives(st,u),cur=tileScore(st,u,u,objs),best=null;
+      R.legalMoves(st,u).forEach(function(m){var s=tileScore(st,u,m,objs);if(s>cur+0.5&&(!best||s>best.s))best={s:s,q:m.q,r:m.r};});
+      if(best)return {type:"move",unit:u,q:best.q,r:best.r};
+      u.moved=true; // chose to hold position
+      if(!u.acted)return AI.nextAction(st);
+    }
+    if(!u.acted){
+      var a2=bestAttack(st,u);if(a2)return a2;
+      if(R.canClaim(st,u).ok)return {type:"claim",unit:u};
+    }
+    u.idle=true;
+  }
+  return null;
+};
+AI.apply=function(st,a){
+  if(a.type==="attack")return R.attack(st,a.unit,a.tech,a.target.id);
+  if(a.type==="claim")return R.claim(st,a.unit);
+  if(a.type==="open")return R.open(st,a.unit);
+  if(a.type==="talk")return R.talk(st,a.unit);
+  if(a.type==="move")return R.move(st,a.unit,a.q,a.r);
+  return {ok:false};
+};
+// Play a whole turn at once (used by the batch sim and tests).
+AI.playTurn=function(st){
+  var guard=60,a;
+  while(!st.over&&guard-->0&&(a=AI.nextAction(st))){var r=AI.apply(st,a);if(!r.ok){a.unit.idle=true;}}
+  if(!st.over)R.endTurn(st);
+};
+})(typeof window!=='undefined'?window:globalThis);
+
+</script>
+<script>
+// Settings (saved in the browser; the game works without storage) and keyboard bindings table.
+(function(G){var SE=G.SE=G.SE||{data:{}};
+var KEY="se_web_settings_v1";
+SE.defaultSettings={uiScale:100,colorblind:false,hints:true,seenTutorial:false};
+SE.defaultKeys={cursorSE:"d",cursorNE:"e",cursorN:"w",cursorNW:"q",cursorSW:"a",cursorS:"s",
+  confirm:" ",nextUnit:"tab",tech1:"1",tech2:"2",tech3:"3",claim:"c",open:"v",talk:"t",endTurn:"n",cancel:"escape"};
+SE.keyLabels={cursorN:"Cursor up",cursorNE:"Cursor up-right",cursorSE:"Cursor down-right",cursorS:"Cursor down",cursorSW:"Cursor down-left",cursorNW:"Cursor up-left",
+  confirm:"Confirm (move / attack / select)",nextUnit:"Next unit",tech1:"Technique 1",tech2:"Technique 2",tech3:"Technique 3 (grey)",claim:"Claim land",open:"Open chest",talk:"Talk to NPC",endTurn:"End turn",cancel:"Cancel / deselect"};
+var mem=null;
+function load(){
+  if(mem)return mem;
+  var s={};try{s=JSON.parse(G.localStorage.getItem(KEY)||"{}");}catch(e){}
+  mem={settings:Object.assign({},SE.defaultSettings,s.settings||{}),keys:Object.assign({},SE.defaultKeys,s.keys||{})};return mem;
+}
+SE.store={
+  settings:function(){return load().settings;},
+  keys:function(){return load().keys;},
+  set:function(k,v){load().settings[k]=v;SE.store.save();SE.store.apply();},
+  save:function(){try{G.localStorage.setItem(KEY,JSON.stringify(load()));}catch(e){}},
+  apply:function(){var s=load().settings,d=G.document;
+    d.documentElement.style.fontSize=(16*s.uiScale/100)+"px";
+    d.documentElement.classList.toggle("cb",!!s.colorblind);}
+};
+})(typeof window!=='undefined'?window:globalThis);
+
+</script>
+<script>
+// Match view: SVG board, panels, input (mouse/touch/keyboard), CPU turns, match clock, hints.
+(function(G){var SE=G.SE=G.SE||{data:{}};
+var H=SE.hex,R=SE.rules,AI=SE.ai,S=34;
+var $=function(sel,root){return (root||G.document).querySelector(sel);};
+function esc(t){return String(t).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+function toast(msg){var t=$("#toast");if(!t)return;t.textContent=msg;t.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(function(){t.classList.remove("on");},2400);}
+SE.toast=toast;
+var HINTS={
+  select:"Tap one of your units to select it. Then tap a highlighted tile to move.",
+  moved:"Nice. Now act: attack an enemy in range, or use a button below. Each unit gets one move and one action per turn.",
+  attack:"Coloured attacks spend chi (blue bar), which refills every turn. Your second attack unlocks at level 3. Some attacks cost you HP too. The grey attack is free and reaches 3 hexes.",
+  unlock:"Level up! A new attack is unlocked: check the buttons below.",
+  claim:"Claim land: stand on a land tile and press Claim. It costs HP (2 x level) but earns 10 star points and a level.",
+  chest:"Chests give star points and a level. Move onto a chest tile, then press Open.",
+  npc:"Stand next to the Old Hermit and press Talk. Each side can talk once for 5 star points. He can't be hurt.",
+  boss:"Wardens hit everyone next to them at the end of each round. Beat one for bonus points and a level."
+};
+function pts(h,rad){var p=H.pixel(h.q,h.r,S),a=[];for(var i=0;i<6;i++){var an=Math.PI/3*i;a.push((p.x+rad*Math.cos(an)).toFixed(1)+","+(p.y+rad*Math.sin(an)).toFixed(1));}return a.join(" ");}
+
+SE.ui={
+  start:function(root,opts,onExit){
+    var v={root:root,onExit:onExit,st:R.createMatch(opts),sel:null,tech:null,cursor:null,paused:false,hintsShown:{},elapsed:0,cpuBusy:false,ended:false,last:null,timers:[]};
+    v.limitMs=opts.clockMin?opts.clockMin*60000:0;
+    SE.ui.cur=v;v.cursor=null;
+    SE.ui.render(v);
+    v.keyFn=function(e){SE.ui.onKey(v,e);};G.document.addEventListener("keydown",v.keyFn);
+    var lastT=G.performance.now();
+    v.clockId=G.setInterval(function(){
+      var now=G.performance.now(),dt=Math.min(1000,now-lastT);lastT=now;
+      if(v.paused||v.ended||G.document.hidden||v.overlay)return;
+      v.elapsed+=dt;
+      if(v.limitMs&&v.elapsed>=v.limitMs&&!v.st.over){R.endByLimit(v.st,"time limit");SE.ui.afterAction(v);}
+      else SE.ui.updateTop(v);
+    },250);
+    SE.ui.maybeCpu(v);
+  },
+  stop:function(v){v.ended=true;G.clearInterval(v.clockId);G.document.removeEventListener("keydown",v.keyFn);v.timers.forEach(G.clearTimeout);SE.ui.cur=null;},
+  me:function(v){return "A";},
+  isMyTurn:function(v){return v.st.turn==="A"&&!v.st.over&&!v.cpuBusy&&!v.paused&&!v.overlay;},
+  sunit:function(v){return v.sel?R.unitById(v.st,v.sel):null;},
+  hint:function(v,key){
+    if(!SE.store.settings().hints||!v.st.opts.hints||v.hintsShown[key])return;
+    v.hintsShown[key]=1;v.hintText=HINTS[key];
+  },
+  fmtClock:function(v){
+    if(!v.limitMs)return "";
+    var left=Math.max(0,Math.ceil((v.limitMs-v.elapsed)/1000));return Math.floor(left/60)+":"+("0"+(left%60)).slice(-2);
+  },
+  topHtml:function(v){
+    var st=v.st,o=st.opts,fc=SE.data.units.factions;
+    function sw(side){var f=fc[st.factions[side]];return '<span class="sw" style="background:var(--side'+side+');'+(f.shape==="circle"?"border-radius:50%":f.shape==="square"?"":"transform:rotate(45deg) scale(.8)")+'"></span>';}
+    return '<div class="score">'+sw("A")+'<span>'+esc(st.names.A)+' '+st.points.A+'</span><span style="color:var(--dim)">vs</span>'+sw("B")+'<span>'+esc(st.names.B)+' '+st.points.B+'</span></div>'+
+      '<div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">'+
+      (o.pointLimit<100000?'<span class="pill">Goal '+o.pointLimit+'</span>':'')+
+      '<span class="pill">Round '+st.round+(o.roundLimit?'/'+o.roundLimit:'')+'</span>'+
+      (v.limitMs?'<span class="pill" id="clock">'+SE.ui.fmtClock(v)+'</span>':'')+
+      '<span class="pill turnpill">'+(st.turn==="A"?"Your turn":"CPU turn")+'</span>'+
+      '<button class="small" id="btn-pause" aria-label="Pause">Menu</button></div>';
+  },
+  updateTop:function(v){var c=$("#clock");if(c)c.textContent=SE.ui.fmtClock(v);},
+  render:function(v){
+    var st=v.st,root=v.root,u=SE.ui.sunit(v);
+    var tiles=[],c,row,minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+    var legal=u&&SE.ui.isMyTurn(v)?R.legalMoves(st,u):[],legalK={};legal.forEach(function(m){legalK[H.key(m.q,m.r)]=1;});
+    var tgt={};if(u&&v.tech&&SE.ui.isMyTurn(v))R.targets(st,u,v.tech).forEach(function(t){tgt[t.id]=1;});
+    var out="",decoOut="";
+    for(c=0;c<st.cols;c++)for(row=0;row<st.rows;row++){
+      var h=H.fromOffset(c,row),k=H.key(h.q,h.r),p=H.pixel(h.q,h.r,S);
+      minX=Math.min(minX,p.x-S);maxX=Math.max(maxX,p.x+S);minY=Math.min(minY,p.y-S);maxY=Math.max(maxY,p.y+S);
+      var fill="var(--tile)",deco="",cls="";
+      if(st.water[k]){fill="var(--water)";deco='<text x="'+p.x+'" y="'+(p.y+6)+'" text-anchor="middle" fill="#4a7fa8" font-size="18">≈</text>';}
+      if(k in st.land){
+        fill="var(--land)";var ow=st.land[k];
+        deco+='<polygon points="'+pts(h,S*0.62)+'" fill="none" stroke="'+(ow?'var(--side'+ow+')':'#b79a5a')+'" stroke-width="'+(ow?3:1.5)+'" stroke-dasharray="'+(ow?'':'4 3')+'"/>';
+        if(ow){var f=SE.data.units.factions[st.factions[ow]];
+          deco+=f.shape==="square"?'<rect x="'+(p.x-5)+'" y="'+(p.y+S*0.42-5)+'" width="10" height="10" fill="var(--side'+ow+')"/>':f.shape==="circle"?'<circle cx="'+p.x+'" cy="'+(p.y+S*0.42)+'" r="5" fill="var(--side'+ow+')"/>':'<polygon points="'+(p.x)+','+(p.y+S*0.42-6)+' '+(p.x+6)+','+(p.y+S*0.42)+' '+p.x+','+(p.y+S*0.42+6)+' '+(p.x-6)+','+(p.y+S*0.42)+'" fill="var(--side'+ow+')"/>';}
+        else deco+='<text x="'+p.x+'" y="'+(p.y+S*0.48)+'" text-anchor="middle" fill="#d9c28a" font-size="13">+10</text>';
+      }
+      if(k in st.chests)deco+='<rect x="'+(p.x-9)+'" y="'+(p.y-S*0.5)+'" width="18" height="13" rx="2" fill="#d8a53a" stroke="#6b4b10"/><text x="'+p.x+'" y="'+(p.y-S*0.5+10)+'" text-anchor="middle" font-size="10" fill="#3a2706">&#9724;</text>';
+      if(legalK[k])cls=" move";
+      out+='<g data-tile="'+k+'"><polygon class="hex'+cls+'" points="'+pts(h,S-1.5)+'" fill="'+fill+'" stroke="'+(legalK[k]?"var(--accent)":"#3a4166")+'" stroke-width="'+(legalK[k]?3:1)+'"/></g>';decoOut+='<g pointer-events="none">'+deco+'</g>';
+    }
+    out+=decoOut;
+    // npc
+    var np=H.pixel(st.npc.q,st.npc.r,S);
+    out+='<g data-tile="'+H.key(st.npc.q,st.npc.r)+'"><circle cx="'+np.x+'" cy="'+np.y+'" r="'+(S*0.5)+'" fill="#e9e4d0" stroke="#8a7f55" stroke-width="2"/><text x="'+np.x+'" y="'+(np.y+7)+'" text-anchor="middle" font-size="22" font-weight="700" fill="#4a4126">?</text></g>';
+    // units
+    st.units.forEach(function(un){if(un.dead)return;
+      var p=H.pixel(un.q,un.r,S),col=un.boss?"#c9443c":"var(--side"+un.side+")",sel=v.sel===un.id,isT=!!tgt[un.id];
+      var shape;
+      if(un.boss)shape='<polygon points="'+pts(un,S*0.62)+'" fill="'+col+'" stroke="#2b0d0b" stroke-width="2"/>';
+      else if(SE.data.units.factions[un.faction].shape==="square")shape='<rect x="'+(p.x-S*0.5)+'" y="'+(p.y-S*0.5)+'" width="'+S+'" height="'+S+'" rx="4" fill="'+col+'" stroke="'+(sel?"#fff":"#000")+'" stroke-width="'+(sel?4:2)+'"/>';
+      else if(SE.data.units.factions[un.faction].shape==="circle")shape='<circle cx="'+p.x+'" cy="'+p.y+'" r="'+(S*0.5)+'" fill="'+col+'" stroke="'+(sel?"#fff":"#000")+'" stroke-width="'+(sel?4:2)+'"/>';
+      else shape='<polygon points="'+p.x+','+(p.y-S*0.62)+' '+(p.x+S*0.6)+','+p.y+' '+p.x+','+(p.y+S*0.62)+' '+(p.x-S*0.6)+','+p.y+'" fill="'+col+'" stroke="'+(sel?"#fff":"#000")+'" stroke-width="'+(sel?4:2)+'"/>';
+      var done=!un.boss&&un.side==="A"&&st.turn==="A"&&un.moved&&un.acted;
+      out+='<g data-unit="'+un.id+'" opacity="'+(done?0.55:1)+'">'+shape+
+        '<text x="'+p.x+'" y="'+(p.y+5)+'" text-anchor="middle" font-size="14" font-weight="800" fill="#10121c">'+esc(un.name.charAt(0))+'</text>'+
+        '<rect x="'+(p.x-S*0.5)+'" y="'+(p.y+S*0.58)+'" width="'+(S)+'" height="5" fill="#000"/><rect x="'+(p.x-S*0.5)+'" y="'+(p.y+S*0.58)+'" width="'+(S*Math.max(0,un.hp/un.maxHp))+'" height="5" fill="#5ad08a"/>'+
+        '<text x="'+(p.x+S*0.5)+'" y="'+(p.y-S*0.38)+'" text-anchor="middle" font-size="11" font-weight="700" fill="#fff" stroke="#000" stroke-width="0.6">L'+un.level+'</text>'+
+        (isT?'<circle cx="'+p.x+'" cy="'+p.y+'" r="'+(S*0.78)+'" fill="none" stroke="var(--bad)" stroke-width="4" stroke-dasharray="5 3"/>':'')+'</g>';
+    });
+    if(v.cursor&&SE.ui.isMyTurn(v)){out+='<polygon points="'+pts(v.cursor,S-3)+'" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="3 3" pointer-events="none"/>';}
+    var vb=(minX-4)+" "+(minY-4)+" "+(maxX-minX+8)+" "+(maxY-minY+8);
+    var info=SE.ui.panelHtml(v,u);
+    var cb=SE.store.settings().colorblind,fc=SE.data.units.factions,colA=cb?"#0072B2":fc[st.factions.A].color,colB=cb?"#E69F00":fc[st.factions.B].color;
+    root.innerHTML='<div class="match" style="--sideA:'+colA+';--sideB:'+colB+'"><div class="top">'+SE.ui.topHtml(v)+'</div>'+
+      '<div class="boardwrap"><svg class="board" viewBox="'+vb+'" role="img" aria-label="Game board">'+out+'</svg></div>'+
+      '<div class="side">'+(v.hintText&&SE.store.settings().hints?'<div class="hint"><span>'+esc(v.hintText)+'</span><button class="small" id="btn-hintx" aria-label="Dismiss hint">OK</button></div>':'')+
+      info+'</div></div>';
+    SE.ui.bind(v);
+  },
+  panelHtml:function(v,u){
+    var st=v.st,my=SE.ui.isMyTurn(v),logHtml=st.log.slice(-4).map(function(l){return '<div class="'+l.kind+'">'+esc(l.msg)+'</div>';}).reverse().join("");
+    var info='<div class="uinfo"><span class="note">'+(my?"Tap a unit of yours.":st.over?"Match over.":"CPU is playing...")+'</span></div>';
+    var acts="";
+    if(u&&u.side==="A"){
+      info='<div class="uinfo"><b>'+esc(u.name)+' L'+u.level+'</b><span>HP '+u.hp+'/'+u.maxHp+' <span class="bar"><i style="width:'+(100*u.hp/u.maxHp)+'%"></i></span></span>'+
+        '<span>Chi '+u.chi.p+'/'+u.maxChi.p+' <span class="bar chi"><i style="width:'+(u.maxChi.p?100*u.chi.p/u.maxChi.p:0)+'%"></i></span></span>'+
+        (SE.ui.usesSecondary(u)?'<span>Chi 2 '+u.chi.s+'/'+u.maxChi.s+' <span class="bar chi"><i style="width:'+(u.maxChi.s?100*u.chi.s/u.maxChi.s:0)+'%"></i></span></span>':'')+
+        '<span>ATK '+u.atk+' DEF '+u.def+'</span><span class="note">'+(u.moved?"moved":"can move")+' / '+(u.acted?"acted":"can act")+'</span></div>';
+      u.techs.forEach(function(id,i){var t=R.tech(id),locked=u.level<(t.unlock||1),noChi=!R.canUse(u,t)&&!locked;
+        acts+='<button data-tech="'+id+'" class="'+(v.tech===id?"sel ":"")+(locked||noChi||u.acted?"dim":"")+'" title="'+esc(t.text||"")+'">'+(i+1)+'. '+esc(t.name)+'<br><small>'+
+          (locked?'Unlocks at level '+t.unlock:(t.cost?t.cost+(t.chi==="s"?' chi 2':' chi'):'free')+' · dmg '+R.basePower(u,t)+' · rng '+t.range+(t.selfHp?' · -'+t.selfHp+' HP':''))+'</small></button>';});
+      acts+='<button data-act="claim" class="'+(R.canClaim(st,u).ok?"":"dim")+'">Claim<br><small>-'+R.claimCost(u)+' HP</small></button>'+
+            '<button data-act="open" class="'+(R.canOpen(st,u).ok?"":"dim")+'">Open<br><small>chest</small></button>'+
+            '<button data-act="talk" class="'+(R.canTalk(st,u).ok?"":"dim")+'">Talk<br><small>NPC</small></button>';
+    }
+    var allDone=my&&R.alive(st,"A").every(function(x){return x.acted&&x.moved;});
+    acts+='<button data-act="end" class="'+(allDone?"primary pulse":"")+'"'+(my?"":" disabled")+'>End turn</button>';
+    return '<div class="panel">'+info+'<div class="actions">'+acts+'</div><div class="log">'+logHtml+'</div></div>';
+  },
+  bind:function(v){
+    var root=v.root;
+    root.querySelectorAll("[data-tile]").forEach(function(e){e.addEventListener("click",function(){var p=e.getAttribute("data-tile").split(",");SE.ui.clickTile(v,+p[0],+p[1]);});});
+    root.querySelectorAll("[data-unit]").forEach(function(e){e.addEventListener("click",function(ev){ev.stopPropagation();SE.ui.clickUnit(v,+e.getAttribute("data-unit"));});});
+    root.querySelectorAll("[data-tech]").forEach(function(e){e.addEventListener("click",function(){SE.ui.pickTech(v,e.getAttribute("data-tech"));});});
+    root.querySelectorAll("[data-act]").forEach(function(e){e.addEventListener("click",function(){SE.ui.doAct(v,e.getAttribute("data-act"));});});
+    var b=$("#btn-hintx",root);if(b)b.addEventListener("click",function(){v.hintText=null;SE.ui.render(v);});
+    var p=$("#btn-pause",root);if(p)p.addEventListener("click",function(){SE.ui.pauseMenu(v);});
+  },
+  usesSecondary:function(u){return u.techs.some(function(id){var t=R.tech(id);return t.chi==="s"&&t.cost>0;});},
+  strongest:function(u,ids){return ids.slice().sort(function(a,b){return R.basePower(u,R.tech(b))-R.basePower(u,R.tech(a));})[0];},
+  pickTech:function(v,id){if(!SE.ui.isMyTurn(v))return;var u=SE.ui.sunit(v),t=R.tech(id);
+    if(u&&u.level<(t.unlock||1)){toast("Unlocks at level "+t.unlock+" (this unit is level "+u.level+").");return;}
+    if(u&&!R.canUse(u,t)){toast("Not enough chi for that attack this turn.");}
+    v.tech=id;SE.ui.render(v);},
+  select:function(v,u){
+    v.sel=u.id;v.cursor={q:u.q,r:u.r};
+    var withT=u.techs.filter(function(id){return R.targets(v.st,u,id).length;}),usable=u.techs.filter(function(id){return R.canUse(u,R.tech(id));});v.tech=SE.ui.strongest(u,withT.length?withT:(usable.length?usable:u.techs));
+    if(!u.moved)SE.ui.hint(v,"select");
+  },
+  clickUnit:function(v,id){
+    if(!SE.ui.isMyTurn(v))return;var st=v.st,u=R.unitById(st,id),cur=SE.ui.sunit(v);
+    if(u.side==="A"){SE.ui.select(v,u);SE.ui.render(v);return;}
+    if(cur&&cur.side==="A"){SE.ui.tryAttack(v,cur,u);return;}
+    toast("Select one of your units first.");
+  },
+  clickTile:function(v,q,r){
+    if(!SE.ui.isMyTurn(v))return;var cur=SE.ui.sunit(v);v.cursor={q:q,r:r};
+    var other=R.unitAt(v.st,q,r);if(other){SE.ui.clickUnit(v,other.id);return;}
+    if(!cur||cur.side!=="A"){SE.ui.hint(v,"select");SE.ui.render(v);return;}
+    if(v.st.npc.q===q&&v.st.npc.r===r){toast(H.dist(cur,v.st.npc)<=1?"Press Talk to speak with the "+v.st.npc.name+".":"Move next to the "+v.st.npc.name+" to talk.");SE.ui.render(v);return;}
+    var res=R.move(v.st,cur,q,r);
+    if(!res.ok)toast(cur.moved?"This unit has already moved.":res.msg);
+    else{SE.ui.afterMove(v,cur);}
+    SE.ui.render(v);
+  },
+  afterMove:function(v,u){
+    var st=v.st,k=H.key(u.q,u.r);
+    if(k in st.land&&st.land[k]!=="A")SE.ui.hint(v,"claim");
+    else if(k in st.chests)SE.ui.hint(v,"chest");
+    else if(H.dist(u,st.npc)<=1&&!st.talked.A)SE.ui.hint(v,"npc");
+    else if(st.units.some(function(b){return b.boss&&!b.dead&&H.dist(b,u)<=1;}))SE.ui.hint(v,"boss");
+    else SE.ui.hint(v,"moved");
+  },
+  tryAttack:function(v,u,t){
+    var st=v.st,list=u.techs.filter(function(id){return R.targets(st,u,id).indexOf(t)>=0;}),id=list.indexOf(v.tech)>=0?v.tech:SE.ui.strongest(u,list);
+    if(!id){toast(u.acted?"This unit has already acted.":"Out of range, locked, or not enough chi.");return;}
+    var res=R.attack(st,u,id,t.id);if(!res.ok)toast(res.msg);else SE.ui.hint(v,"attack");
+    SE.ui.afterAction(v);
+  },
+  doAct:function(v,a){
+    if(!SE.ui.isMyTurn(v))return;var st=v.st,u=SE.ui.sunit(v);
+    if(a==="end"){SE.ui.endTurn(v);return;}
+    if(!u||u.side!=="A"){toast("Select one of your units first.");return;}
+    var res=a==="claim"?R.claim(st,u):a==="open"?R.open(st,u):R.talk(st,u);
+    if(!res.ok)toast(res.msg);SE.ui.afterAction(v);
+  },
+  endTurn:function(v){
+    R.endTurn(v.st);v.sel=null;v.tech=null;v.cursor=null;SE.ui.afterAction(v);
+  },
+  afterAction:function(v){
+    if(v.st.over){SE.ui.render(v);v.timers.push(G.setTimeout(function(){if(!v.ended){var root=v.root;SE.ui.stop(v);v.onExit("result",v.st,{elapsed:v.elapsed});}},900));return;}
+    R.alive(v.st,"A").forEach(function(u){u.techs.forEach(function(id){var t=R.tech(id);if((t.unlock||1)>1&&u.level>=t.unlock&&!v.unlockSeen){v.unlockSeen=1;SE.ui.hint(v,"unlock");}});});
+    SE.ui.render(v);SE.ui.maybeCpu(v);
+  },
+  maybeCpu:function(v){
+    if(v.st.over||v.st.turn!=="B"||v.cpuBusy)return;
+    v.cpuBusy=true;SE.ui.render(v);
+    var step=function(){
+      if(v.ended)return;
+      if(v.paused||v.overlay){v.timers.push(G.setTimeout(step,300));return;}
+      var st=v.st;if(st.over){v.cpuBusy=false;SE.ui.afterAction(v);return;}
+      var a=AI.nextAction(st);
+      if(a){var r=AI.apply(st,a);if(!r.ok)a.unit.idle=true;v.sel=a.unit.id;SE.ui.render(v);v.timers.push(G.setTimeout(step,a.type==="move"?420:620));}
+      else{R.endTurn(st);v.cpuBusy=false;v.sel=null;SE.ui.afterAction(v);}
+    };
+    v.timers.push(G.setTimeout(step,500));
+  },
+  pauseMenu:function(v){
+    v.paused=true;var d=G.document.createElement("div");d.className="overlay";
+    d.innerHTML='<div class="modal"><h2>Paused</h2><p class="note">The match clock is stopped.</p><button class="primary" id="p-res">Resume</button><button id="p-quit">Quit to main menu</button></div>';
+    G.document.body.appendChild(d);
+    $("#p-res",d).addEventListener("click",function(){v.paused=false;d.remove();});
+    $("#p-quit",d).addEventListener("click",function(){d.remove();SE.ui.stop(v);v.onExit("quit");});
+    $("#p-res",d).focus();
+  },
+  onKey:function(v,e){
+    if(v.paused||v.overlay||v.ended)return;
+    var K=SE.store.keys(),key=e.key.length===1?e.key.toLowerCase():e.key.toLowerCase();
+    var map={};Object.keys(K).forEach(function(n){map[K[n]]=n;});var name=map[key];if(!name)return;
+    if(e.ctrlKey||e.metaKey||e.altKey)return;
+    if(!SE.ui.isMyTurn(v))return;
+    e.preventDefault();var st=v.st,u=SE.ui.sunit(v);
+    var dirs={cursorSE:0,cursorNE:1,cursorN:2,cursorNW:3,cursorSW:4,cursorS:5};
+    if(name in dirs){
+      var base=v.cursor||(u?{q:u.q,r:u.r}:R.alive(st,"A")[0]),d=H.DIRS[dirs[name]],nq=base.q+d[0],nr=base.r+d[1];
+      if(R.inBoard(st,nq,nr))v.cursor={q:nq,r:nr};SE.ui.render(v);return;
+    }
+    if(name==="nextUnit"){
+      var mine=R.alive(st,"A"),i=u?mine.findIndex(function(x){return x.id===u.id;}):-1,n=mine[(i+1)%mine.length];SE.ui.select(v,n);SE.ui.render(v);return;
+    }
+    if(name==="cancel"){v.sel=null;v.tech=null;v.cursor=null;SE.ui.render(v);return;}
+    if(name==="endTurn"){SE.ui.endTurn(v);return;}
+    if(name==="tech1"||name==="tech2"||name==="tech3"){if(u&&u.side==="A"){var id=u.techs[+name.charAt(4)-1];if(id)SE.ui.pickTech(v,id);}return;}
+    if(name==="claim"||name==="open"||name==="talk"){SE.ui.doAct(v,name);return;}
+    if(name==="confirm"){
+      if(!v.cursor){var f=R.alive(st,"A")[0];SE.ui.select(v,f);SE.ui.render(v);return;}
+      var at=R.unitAt(st,v.cursor.q,v.cursor.r);
+      if(at){SE.ui.clickUnit(v,at.id);return;}
+      SE.ui.clickTile(v,v.cursor.q,v.cursor.r);
+    }
+  }
+};
+})(typeof window!=='undefined'?window:globalThis);
+
+</script>
+<script>
+// Screens and flow: main menu, faction pick, Quick Play / Custom Match, tutorial cards, options, result.
+(function(G){var SE=G.SE=G.SE||{data:{}};
+var R=SE.rules,M=SE.menu={},root,flow={};
+function esc(t){return String(t).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+function $(s,r){return (r||root).querySelector(s);}
+function on(sel,fn,r){var e=$(sel,r);if(e)e.addEventListener("click",fn);}
+function screen(html){root.innerHTML='<div class="screen">'+html+'</div>';}
+var HERO='<svg class="hero" viewBox="0 0 320 170" role="img" aria-label="Star Evolution title art (placeholder)"><defs><radialGradient id="g" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffe29a"/><stop offset="1" stop-color="#e8b84a" stop-opacity="0"/></radialGradient></defs>'+
+ '<circle cx="160" cy="85" r="80" fill="url(#g)" opacity=".45"/><polygon points="160,15 176,70 232,70 186,102 204,157 160,124 116,157 134,102 88,70 144,70" fill="#e8b84a" stroke="#fff3c9" stroke-width="3"/>'+
+ '<polygon points="52,120 64,100 76,120 64,140" fill="#8a6bd6"/><circle cx="262" cy="118" r="12" fill="#e8b84a" stroke="#000" stroke-width="2"/></svg>';
+
+M.boot=function(el){root=el;SE.store.apply();M.title();};
+M.title=function(){
+  screen(HERO+'<h1 class="logo">STAR EVOLUTION</h1><p class="sub">Take land. Take risks. Take the stars.</p>'+
+   '<div class="menu"><button class="primary" id="m-start">Start Game</button><button id="m-builder">Faction Builder</button><button id="m-practice">Practice Mode</button><button id="m-options">Options</button><button id="m-exit">Exit Game</button></div>'+
+   '<p class="note">Web test build (Pass A). Placeholder numbers and art.</p>');
+  on("#m-start",M.factionPick);
+  on("#m-builder",function(){SE.toast("Faction Builder is coming in a later update.");});
+  on("#m-practice",function(){SE.toast("Practice Mode is coming in a later update.");});
+  on("#m-options",function(){M.options(M.title);});
+  on("#m-exit",M.goodbye);
+};
+M.goodbye=function(){
+  screen('<h1 class="logo">Thanks for playing</h1><p class="sub">You can close this tab now. A web page can\'t close itself.</p><div class="menu"><button class="primary" id="g-back">Back to main menu</button></div>');
+  on("#g-back",M.title);
+};
+M.factionPick=function(){
+  var F=SE.data.units.factions,U=SE.data.units.units;
+  var cards=Object.keys(F).map(function(id){var f=F[id];
+    return '<div class="card" tabindex="0" role="button" data-f="'+id+'"><svg width="34" height="34" viewBox="-17 -17 34 34" aria-hidden="true">'+
+      (f.shape==="circle"?'<circle r="13" fill="'+f.color+'"/>':f.shape==="square"?'<rect x="-12" y="-12" width="24" height="24" rx="3" fill="'+f.color+'"/>':'<polygon points="0,-16 14,0 0,16 -14,0" fill="'+f.color+'"/>')+'</svg><h3>'+esc(f.name)+'</h3><ul>'+
+      f.roster.map(function(u){var d=U[u];return '<li>'+esc(d.name)+' · HP '+d.hp+' DEF '+d.def+'</li>';}).join("")+'</ul></div>';}).join("");
+  screen('<h2>Pick your faction</h2><div class="cards">'+cards+'</div><div class="menu"><button id="f-back">Back</button></div>');
+  root.querySelectorAll("[data-f]").forEach(function(e){var go=function(){flow.faction=e.getAttribute("data-f");M.modePick();};
+    e.addEventListener("click",go);e.addEventListener("keydown",function(ev){if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();go();}});});
+  on("#f-back",M.title);
+};
+M.modePick=function(){
+  var d=SE.data.rules.defaults;
+  screen('<h2>'+esc(SE.data.units.factions[flow.faction].name)+'</h2><div class="cards"><div class="card" tabindex="0" role="button" id="q-quick"><h3>Quick Play</h3><p class="note">Units picked for you. Basic rules, first to '+d.pointLimit+' star points or '+d.clockMin+' minutes. Straight into the match.</p></div>'+
+   '<div class="card" tabindex="0" role="button" id="q-custom"><h3>Custom Match</h3><p class="note">Pick the rules, the goal and the limits.</p></div></div><div class="menu"><button id="q-back">Back</button></div>');
+  var q=function(){M.beforeMatch(M.baseOpts());},c=function(){M.custom();};
+  on("#q-quick",q);on("#q-custom",c);on("#q-back",M.factionPick);
+  [["#q-quick",q],["#q-custom",c]].forEach(function(p){$(p[0]).addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();p[1]();}});});
+};
+M.baseOpts=function(){var d=SE.data.rules.defaults;
+  return {faction:flow.faction,rules:"basic",pointLimit:d.pointLimit,clockMin:d.clockMin,roundLimit:d.roundLimit,respawn:d.respawn,firstSide:d.firstSide,hints:SE.store.settings().hints,seed:(Date.now()&0xffffff)};};
+M.custom=function(){
+  var L=SE.data.rules.limits,d=SE.data.rules.defaults,o=flow.custom||{pt:true,ptv:d.pointLimit,cl:true,clv:d.clockMin,rd:false,rdv:d.roundLimit,rs:d.respawn,hints:SE.store.settings().hints};
+  screen('<h2>Custom Match</h2><div class="form">'+
+   '<div class="row"><b>Rules</b><span><select id="c-rules" aria-label="Rules"><option>Basic</option><option disabled>Standard (coming soon)</option></select></span></div>'+
+   '<p class="note" style="margin:0">Basic: unit attacks, movement, land, chests, NPC. No magic cards or gods. Standard (harder CPU, harder wins, magic cards) comes later.</p>'+
+   '<div class="row"><label><input type="checkbox" id="c-pt"> Star point goal</label><span id="c-ptl"></span><input type="range" id="c-ptv" min="'+L.pointMin+'" max="'+L.pointMax+'" step="10"></div>'+
+   '<div class="row"><label><input type="checkbox" id="c-cl"> Match clock (minutes)</label><span id="c-cll"></span><input type="range" id="c-clv" min="'+L.clockMin+'" max="'+L.clockMax+'" step="1"></div>'+
+   '<div class="row"><label><input type="checkbox" id="c-rd"> Round limit</label><span id="c-rdl"></span><input type="range" id="c-rdv" min="'+L.roundMin+'" max="'+L.roundMax+'" step="1"></div>'+
+   '<p class="note" style="margin:0">Use one limit or several. The first to trigger ends the match; on a clock or round limit the higher score wins.</p>'+
+   '<div class="row"><label><input type="checkbox" id="c-rs"> Defeated units return at base (half HP)</label></div>'+
+   '<div class="row"><label><input type="checkbox" id="c-hints"> On-screen hints</label></div>'+
+   '</div><div class="menu"><button class="primary" id="c-go">Start match</button><button id="c-back">Back</button></div>');
+  function setv(id,val,isChk){var e=$("#"+id);if(isChk)e.checked=!!val;else e.value=val;}
+  setv("c-pt",o.pt,1);setv("c-ptv",o.ptv);setv("c-cl",o.cl,1);setv("c-clv",o.clv);setv("c-rd",o.rd,1);setv("c-rdv",o.rdv);setv("c-rs",o.rs,1);setv("c-hints",o.hints,1);
+  function lab(){$("#c-ptl").textContent=$("#c-ptv").value;$("#c-cll").textContent=$("#c-clv").value;$("#c-rdl").textContent=$("#c-rdv").value;
+    [["pt"],["cl"],["rd"]].forEach(function(k){$("#c-"+k[0]+"v").disabled=!$("#c-"+k[0]).checked;});}
+  ["c-pt","c-ptv","c-cl","c-clv","c-rd","c-rdv"].forEach(function(id){$("#"+id).addEventListener("input",lab);});lab();
+  function read(){return {pt:$("#c-pt").checked,ptv:+$("#c-ptv").value,cl:$("#c-cl").checked,clv:+$("#c-clv").value,rd:$("#c-rd").checked,rdv:+$("#c-rdv").value,rs:$("#c-rs").checked,hints:$("#c-hints").checked};}
+  on("#c-go",function(){
+    var v=read();if(!v.pt&&!v.cl&&!v.rd){v.pt=true;SE.toast("No limit picked: using the star point goal.");}
+    flow.custom=v;
+    var opts=M.baseOpts();opts.pointLimit=v.pt?v.ptv:100000;opts.clockMin=v.cl?v.clv:0;opts.roundLimit=v.rd?v.rdv:0;opts.respawn=v.rs;opts.hints=v.hints;
+    M.beforeMatch(opts);});
+  on("#c-back",function(){flow.custom=read();M.modePick();});
+};
+var TUT=[
+ ["Move","Tap one of your units, then tap a glowing tile. Each unit gets one move and one action per turn."],
+ ["Attack","Tap an enemy in range. Free attacks cost nothing; techniques cost chi (and sometimes HP) but hit harder."],
+ ["Land and chests","Stand on a land tile and press Claim for 10 star points and a level. Chests give points and a level too."],
+ ["Talk to the Hermit","Walk next to the Old Hermit (the ? in the middle) and press Talk. Your side can talk to him once for 5 star points. Nobody can hurt him."]];
+M.beforeMatch=function(opts){
+  if(SE.store.settings().seenTutorial){M.play(opts);return;}
+  var i=0;
+  function show(){
+    var d=G.document.createElement("div");d.className="overlay";var t=TUT[i];
+    d.innerHTML='<div class="modal" role="dialog" aria-label="Quick tutorial"><p class="note">Quick tutorial '+(i+1)+'/'+TUT.length+'</p><h2>'+t[0]+'</h2><p>'+t[1]+'</p>'+
+      '<button class="primary" id="t-next">'+(i<TUT.length-1?"Next":"Start match")+'</button><button id="t-skip">Skip tutorial</button></div>';
+    G.document.body.appendChild(d);$("#t-next",d).focus();
+    $("#t-next",d).addEventListener("click",function(){d.remove();if(++i<TUT.length)show();else{SE.store.set("seenTutorial",true);M.play(opts);}});
+    $("#t-skip",d).addEventListener("click",function(){d.remove();SE.store.set("seenTutorial",true);M.play(opts);});
+  }
+  show();
+};
+M.play=function(opts){
+  flow.lastOpts=opts;
+  SE.ui.start(root,opts,function(kind,st,extra){
+    if(kind==="result")M.result(st,extra);else M.title();});
+};
+M.result=function(st,extra){
+  var win=st.winner==="A"?"You win!":st.winner==="B"?"The CPU wins":"Draw";
+  var mins=Math.floor(extra.elapsed/60000),secs=Math.floor(extra.elapsed/1000)%60;
+  function row(l,a,b){return '<tr><th>'+l+'</th><td>'+a+'</td><td>'+b+'</td></tr>';}
+  screen('<h1 class="logo" style="font-size:2rem">'+win+'</h1><p class="sub">'+esc(st.endReason)+' · round '+st.round+' · '+mins+':'+("0"+secs).slice(-2)+' played</p>'+
+   '<div class="end"><table><tr><th></th><th>'+esc(st.names.A)+'</th><th>'+esc(st.names.B)+'</th></tr>'+
+   row("Star points",st.points.A,st.points.B)+row("Land held",R.landCount(st,"A"),R.landCount(st,"B"))+row("Talked to Hermit",st.talked.A?"yes":"no",st.talked.B?"yes":"no")+'</table></div>'+
+   '<div class="menu"><button class="primary" id="r-again">Play again</button><button id="r-menu">Main menu</button></div>');
+  on("#r-again",function(){var o=Object.assign({},flow.lastOpts,{seed:(Date.now()&0xffffff)});M.play(o);});
+  on("#r-menu",M.title);
+};
+M.options=function(back){
+  var s=SE.store.settings(),K=SE.store.keys();
+  screen('<h2>Options</h2><div class="form">'+
+   '<div class="row"><label for="o-scale">Text and button size</label><span id="o-sl">'+s.uiScale+'%</span><input type="range" id="o-scale" min="80" max="160" step="10" value="'+s.uiScale+'"></div>'+
+   '<div class="row"><label><input type="checkbox" id="o-cb"'+(s.colorblind?" checked":"")+'> Colour-blind mode</label></div>'+
+   '<p class="note" style="margin:0">Changes palette to blue/orange. Sides are also told apart by shape (circle or diamond) and land markers.</p>'+
+   '<div class="row"><label><input type="checkbox" id="o-hints"'+(s.hints?" checked":"")+'> On-screen hints</label></div>'+
+   '<div><b>Keyboard</b><table class="keys">'+Object.keys(SE.keyLabels).map(function(k){return '<tr><td>'+SE.keyLabels[k]+'</td><td><kbd>'+(K[k]===" "?"Space":esc(K[k]))+'</kbd></td></tr>';}).join("")+'</table>'+
+   '<p class="note">Mouse and touch always work. Rebinding keys is coming in a later update.</p></div>'+
+   '<button id="o-reset">Show the tutorial again next game</button></div><div class="menu"><button class="primary" id="o-back">Back</button></div>');
+  $("#o-scale").addEventListener("input",function(e){$("#o-sl").textContent=e.target.value+"%";SE.store.set("uiScale",+e.target.value);});
+  $("#o-cb").addEventListener("change",function(e){SE.store.set("colorblind",e.target.checked);});
+  $("#o-hints").addEventListener("change",function(e){SE.store.set("hints",e.target.checked);});
+  on("#o-reset",function(){SE.store.set("seenTutorial",false);SE.toast("Tutorial will show before your next match.");});
+  on("#o-back",back);
+};
+})(typeof window!=='undefined'?window:globalThis);
+
+</script>
+<script>SE.menu.boot(document.getElementById('app'));</script>
+</body>
+</html>
