@@ -1291,11 +1291,13 @@ SE.ui={
       if(st.water[k]){fill="var(--water)";deco='<text x="'+p.x+'" y="'+(p.y+6)+'" text-anchor="middle" fill="#4a7fa8" font-size="18">≈</text>';}
       if(k in st.land){
         fill="var(--land)";var ow=st.land[k];
+        if(ow)deco+='<polygon points="'+pts(h,S-1.5)+'" fill="var(--side'+ow+')" fill-opacity=".38" stroke="var(--side'+ow+')" stroke-opacity=".8" stroke-width="2"/>';
         deco+='<polygon points="'+pts(h,S*0.62)+'" fill="none" stroke="'+(ow?'var(--side'+ow+')':'#b79a5a')+'" stroke-width="'+(ow?3:1.5)+'" stroke-dasharray="'+(ow?'':'4 3')+'"/>';
         if(ow){var f=SE.data.units.factions[st.factions[ow]];
           deco+=f.shape==="square"?'<rect x="'+(p.x-5)+'" y="'+(p.y+S*0.42-5)+'" width="10" height="10" fill="var(--side'+ow+')"/>':f.shape==="circle"?'<circle cx="'+p.x+'" cy="'+(p.y+S*0.42)+'" r="5" fill="var(--side'+ow+')"/>':'<polygon points="'+(p.x)+','+(p.y+S*0.42-6)+' '+(p.x+6)+','+(p.y+S*0.42)+' '+p.x+','+(p.y+S*0.42+6)+' '+(p.x-6)+','+(p.y+S*0.42)+'" fill="var(--side'+ow+')"/>';}
         else deco+='<text x="'+p.x+'" y="'+(p.y+S*0.48)+'" text-anchor="middle" fill="#d9c28a" font-size="13">+10</text>';
       }
+      if(k in st.chests)deco+='<polygon points="'+pts(h,S-1.5)+'" fill="#d8a53a" fill-opacity=".16" stroke="#d8a53a" stroke-opacity=".5" stroke-width="1.5"/>';
       if(k in st.chests)deco+='<rect x="'+(p.x-9)+'" y="'+(p.y-S*0.5)+'" width="18" height="13" rx="2" fill="#d8a53a" stroke="#6b4b10"/><text x="'+p.x+'" y="'+(p.y-S*0.5+10)+'" text-anchor="middle" font-size="10" fill="#3a2706">&#9724;</text>';
       if(legalK[k])cls=" move";
       out+='<g data-tile="'+k+'"><polygon class="hex'+cls+'" points="'+pts(h,S-1.5)+'" fill="'+fill+'" stroke="#3a4166" stroke-width="1"/></g>';decoOut+='<g pointer-events="none">'+deco+'</g>';
@@ -1579,7 +1581,7 @@ M.practice=function(){
   $("#p-first").value=p.first;$("#p-goal").value=p.goal;
   function read(){return {me:$("#p-me").value,opp:$("#p-opp").value,first:$("#p-first").value,goal:$("#p-goal").value};}
   on("#p-go",function(){var v=read();flow.practice=v;
-    M.play({faction:v.me,opponent:v.opp,rules:"basic",pointLimit:+v.goal||100000,clockMin:0,roundLimit:0,respawn:true,firstSide:v.first,hints:true,practice:true,seed:(Date.now()&0xffffff)});});
+    M.beforeMatch({faction:v.me,opponent:v.opp,rules:"basic",pointLimit:+v.goal||100000,clockMin:0,roundLimit:0,respawn:true,firstSide:v.first,hints:true,practice:true,seed:(Date.now()&0xffffff)});});
   on("#p-guide",function(){var v=read();flow.practice=v;SE.tutorial.guide({faction:v.me,opponent:v.opp,goal:+v.goal||75});});
   on("#p-back",function(){flow.practice=read();M.title();});
 };
