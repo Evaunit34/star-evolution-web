@@ -58,6 +58,19 @@ svg.board{width:100%;height:100%;max-height:100%;touch-action:manipulation}
 @media (min-width:900px){.match{flex-direction:row;flex-wrap:wrap}.top{width:100%}.boardwrap{flex:1 1 60%}.side{flex:0 0 330px;display:flex;flex-direction:column;justify-content:flex-end}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
+/* Pass B: tutorial, guide, practice */
+.modal.wide{max-width:560px;max-height:94dvh;overflow:auto}
+.tsvg{width:100%;height:auto;background:#0f1222;border:1px solid var(--line);border-radius:12px}
+.ttext{margin:.2rem 0;text-align:left;font-size:.98rem}
+.dots{display:flex;gap:6px;justify-content:center}.dots i{width:8px;height:8px;border-radius:50%;background:var(--line);display:inline-block}.dots i.on{background:var(--gold)}
+.trow{display:flex;gap:.5rem}.trow button{flex:1}
+.tabs{display:flex;gap:.3rem;flex-wrap:wrap}.tabs button{flex:1;min-height:40px;padding:.3rem .5rem;font-size:.9rem}.tabs button.on{border-color:var(--gold);background:var(--panel)}
+.guide #g-body{text-align:left}.guide h2{font-size:1.1rem;margin:.6rem 0 .3rem}.gl{margin:.2rem 0;padding-left:1.1rem;color:var(--dim);font-size:.88rem}.ucard{border-top:1px solid var(--line);padding:.4rem 0}
+.actions button.newbtn{animation:pulse 1.1s infinite;border-color:var(--gold)}
+.hint button.link{background:none;border:none;color:var(--dim);text-decoration:underline;min-height:0;padding:0 .3rem;font-size:.8rem}
+.field{display:flex;flex-direction:column;gap:.3rem;text-align:left}.field select{font:inherit;padding:.6rem;border-radius:10px;background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+.modal>*{flex-shrink:0}.modal #t-host,.modal #g-body{display:flex;flex-direction:column;gap:.7rem}.modal #t-host>*,.modal #g-body>*{flex-shrink:0}
+
 </style>
 </head>
 <body>
@@ -771,7 +784,7 @@ R.createMatch=function(o){
   var fa=o.faction,others=facs.filter(function(f){return f!==fa;}),fb=o.opponent||others[Math.floor(R.rng((o.seed||1)+7919)()*others.length)];
   var st={opts:o,rng:R.rng(o.seed),turn:"A",round:1,points:{A:0,B:0},over:false,winner:null,endReason:null,
     log:[],units:[],land:{},claimed:{A:{},B:{}},chests:{},talked:{A:false,B:false},
-    factions:{A:fa,B:fb},names:{A:U.factions[fa].name,B:U.factions[fb].name},
+    factions:{A:fa,B:fb},names:{A:U.factions[fa].name+(fa===fb?" (you)":""),B:U.factions[fb].name+(fa===fb?" (CPU)":"")},
     cols:M.cols,rows:M.rows,water:{},landTiles:[],npc:null,nextId:1};
   M.water.forEach(function(p){var h=H.fromOffset(p[0],p[1]);st.water[H.key(h.q,h.r)]=1;});
   M.land.forEach(function(p){var h=H.fromOffset(p[0],p[1]),k=H.key(h.q,h.r);st.land[k]=null;st.landTiles.push(k);});
@@ -789,7 +802,7 @@ R.createMatch=function(o){
     st.units.push({id:st.nextId++,uid:B.id,side:"N",faction:"neutral",name:B.name,hp:B.hp,maxHp:B.hp,atk:B.atk,def:B.def,chi:{p:0,s:0},maxChi:{p:0,s:0},move:0,techs:[],
       level:B.level,exp:0,q:h.q,r:h.r,moved:true,acted:true,idle:true,dead:false,boss:true});});
   st.turn=o.firstSide==='A'||o.firstSide==='B'?o.firstSide:(st.rng()<0.5?'A':'B');
-  log(st,"Match start: "+st.names.A+" vs "+st.names.B+". First to "+o.pointLimit+" star points wins. "+st.names[st.turn]+" moves first.","info");
+  log(st,"Match start: "+st.names.A+" vs "+st.names.B+". "+(o.pointLimit>=100000?"No point goal (practice).":"First to "+o.pointLimit+" star points wins.")+" "+st.names[st.turn]+" moves first.","info");
   return st;
 };
 
@@ -1060,6 +1073,145 @@ SE.store={
 
 </script>
 <script>
+// Small SVG drawings of the board pieces, used by the tutorial and guide (same look as the board).
+(function(G){var SE=G.SE=G.SE||{data:{}};
+var A=SE.art={};
+function pts(cx,cy,r){var a=[];for(var i=0;i<6;i++){var t=Math.PI/3*i;a.push((cx+r*Math.cos(t)).toFixed(1)+","+(cy+r*Math.sin(t)).toFixed(1));}return a.join(" ");}
+A.reduced=function(){try{return G.matchMedia&&G.matchMedia("(prefers-reduced-motion: reduce)").matches;}catch(e){return false;}};
+A.hex=function(cx,cy,r,o){o=o||{};return '<polygon points="'+pts(cx,cy,r)+'" fill="'+(o.fill||"#252a44")+'" stroke="'+(o.stroke||"#3a4166")+'" stroke-width="'+(o.sw||1.5)+'"'+(o.dash?' stroke-dasharray="4 3"':"")+'/>';};
+A.land=function(cx,cy,r,owner){return A.hex(cx,cy,r-1.5,{fill:"#5a4a2a"})+A.hex(cx,cy,r*0.62,{fill:"none",stroke:owner||"#b79a5a",sw:owner?3:1.5,dash:!owner})+(owner?"":'<text x="'+cx+'" y="'+(cy+r*0.48)+'" text-anchor="middle" fill="#d9c28a" font-size="11">+10</text>');};
+A.water=function(cx,cy,r){return A.hex(cx,cy,r-1.5,{fill:"#16324d"})+'<text x="'+cx+'" y="'+(cy+5)+'" text-anchor="middle" fill="#4a7fa8" font-size="16">≈</text>';};
+A.chest=function(cx,cy){return '<rect x="'+(cx-9)+'" y="'+(cy-7)+'" width="18" height="13" rx="2" fill="#d8a53a" stroke="#6b4b10"/><rect x="'+(cx-9)+'" y="'+(cy-7)+'" width="18" height="5" rx="2" fill="#e8bd5a" stroke="#6b4b10"/>';};
+A.npc=function(cx,cy,r){return '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="#e9e4d0" stroke="#8a7f55" stroke-width="2"/><text x="'+cx+'" y="'+(cy+r*0.32)+'" text-anchor="middle" font-size="'+(r*1.1)+'" font-weight="700" fill="#4a4126">?</text>';};
+A.boss=function(cx,cy,r,lvl){return '<polygon points="'+pts(cx,cy,r)+'" fill="#c9443c" stroke="#2b0d0b" stroke-width="2"/><text x="'+cx+'" y="'+(cy+5)+'" text-anchor="middle" font-size="14" font-weight="800" fill="#10121c">W</text>'+(lvl?'<text x="'+(cx+r*0.8)+'" y="'+(cy-r*0.6)+'" text-anchor="middle" font-size="10" font-weight="700" fill="#fff" stroke="#000" stroke-width=".6">L'+lvl+'</text>':"");};
+// f: {shape,color,letter,level,hp(0-1)}
+A.unit=function(cx,cy,r,f){
+  var col=f.color||"#bbb",s="";
+  if(f.shape==="square")s='<rect x="'+(cx-r)+'" y="'+(cy-r)+'" width="'+(2*r)+'" height="'+(2*r)+'" rx="4" fill="'+col+'" stroke="#000" stroke-width="2"/>';
+  else if(f.shape==="diamond")s='<polygon points="'+cx+","+(cy-r*1.2)+" "+(cx+r*1.2)+","+cy+" "+cx+","+(cy+r*1.2)+" "+(cx-r*1.2)+","+cy+'" fill="'+col+'" stroke="#000" stroke-width="2"/>';
+  else s='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+col+'" stroke="#000" stroke-width="2"/>';
+  s+='<text x="'+cx+'" y="'+(cy+5)+'" text-anchor="middle" font-size="14" font-weight="800" fill="#10121c">'+(f.letter||"")+'</text>';
+  if(f.hp!=null)s+='<rect x="'+(cx-r)+'" y="'+(cy+r*1.2)+'" width="'+(2*r)+'" height="5" fill="#000"/><rect x="'+(cx-r)+'" y="'+(cy+r*1.2)+'" width="'+(2*r*f.hp)+'" height="5" fill="#5ad08a"/>';
+  if(f.level)s+='<text x="'+(cx+r)+'" y="'+(cy-r*0.7)+'" text-anchor="middle" font-size="11" font-weight="700" fill="#fff" stroke="#000" stroke-width=".6">L'+f.level+'</text>';
+  return s;
+};
+A.btn=function(x,y,w,h,l1,l2,o){o=o||{};return '<g opacity="'+(o.dim?0.5:1)+'"><rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="8" fill="#20243a" stroke="'+(o.sel?"#e8b84a":"#2f3552")+'" stroke-width="'+(o.sel?2.5:1)+'"/><text x="'+(x+w/2)+'" y="'+(y+h/2-2)+'" text-anchor="middle" font-size="11" font-weight="700" fill="#eceaf6">'+l1+'</text><text x="'+(x+w/2)+'" y="'+(y+h/2+11)+'" text-anchor="middle" font-size="9" fill="#9aa0bd">'+l2+'</text></g>';};
+// animation helpers (skipped when the player prefers reduced motion)
+A.move=function(dx,dy,dur){if(A.reduced())return "";return '<animateTransform attributeName="transform" type="translate" values="0 0;0 0;'+dx+" "+dy+";"+dx+" "+dy+'" keyTimes="0;.25;.6;1" dur="'+(dur||3)+'s" repeatCount="indefinite"/>';};
+A.pop=function(dur){if(A.reduced())return "";return '<animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.3;.45;.85;1" dur="'+(dur||3)+'s" repeatCount="indefinite"/>';};
+})(typeof window!=='undefined'?window:globalThis);
+
+</script>
+<script>
+// Picture tutorial (10 cards with small demos), plus the Guide overlay (How to play / Points / Units / Keys).
+(function(G){var SE=G.SE=G.SE||{data:{}};
+var A=SE.art,R=SE.rules,T=SE.tutorial={};
+function esc(t){return String(t).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+function fac(id){return SE.data.units.factions[id]||SE.data.units.factions[Object.keys(SE.data.units.factions)[0]];}
+function tok(f,letter,extra){return Object.assign({shape:f.shape,color:f.color,letter:letter},extra||{});}
+function svg(inner){return '<svg viewBox="0 0 320 150" class="tsvg" role="img" aria-hidden="true">'+inner+'</svg>';}
+function pz(q,ox,oy){return {x:(ox||62)+33*q,y:(oy||70)+(q%2?19:0)};}
+function star(cx,cy,r,col){var p=[];for(var i=0;i<10;i++){var a=-Math.PI/2+Math.PI/5*i,rr=i%2?r*0.45:r;p.push((cx+rr*Math.cos(a)).toFixed(1)+","+(cy+rr*Math.sin(a)).toFixed(1));}return '<polygon points="'+p.join(" ")+'" fill="'+(col||"#e8b84a")+'" stroke="#fff3c9" stroke-width="1.5"/>';}
+function unitOf(f){var id=f.roster[0],u=SE.data.units.units[id];return {id:id,d:u,letter:u.name.charAt(0)};}
+function lbl(x,y,t,o){o=o||{};return '<text x="'+x+'" y="'+y+'" text-anchor="'+(o.a||"middle")+'" font-size="'+(o.s||10)+'" fill="'+(o.c||"#c9cde6")+'"'+(o.b?' font-weight="700"':"")+'>'+esc(t)+'</text>';}
+T.cards=function(ctx){
+  ctx=ctx||{};var F=fac(ctx.faction),O=fac(ctx.opponent||Object.keys(SE.data.units.factions).filter(function(k){return SE.data.units.factions[k]!==F;})[0]);
+  var U=unitOf(F),P=SE.data.rules.points,goal=(ctx.goal||SE.data.rules.defaults.pointLimit),cards=[];
+  var dd=U.d,dummy={level:1,atk:dd.atk};
+  function tdesc(id){var t=R.tech(id);return {t:t,dmg:R.basePower(dummy,t)};}
+  var techs=dd.techs.map(tdesc);
+  // 1 welcome
+  cards.push({title:"Welcome to Star Evolution",text:"Two sides, one small map. Take land, open chests, talk to the Hermit and beat the Wardens to earn star points. First side to "+goal+" star points wins.",
+    svg:svg([0,1,2].map(function(i){return A.unit(50+i*38,50+(i%2)*14,14,tok(F,String.fromCharCode(65+i)));}).join("")+[0,1,2].map(function(i){return A.unit(190+i*38,50+(i%2)*14,14,tok(O,String.fromCharCode(88+i)));}).join("")+lbl(160,62,"vs",{s:14,b:1})+star(160,118,18)+lbl(160,146,goal+" to win",{s:11,b:1,c:"#e8b84a"}))});
+  // 2 units
+  cards.push({title:"Your units",text:"You control 3 units. The letter names the unit, the shape and colour show the side. The green bar is HP, L is the level. Each unit gets one move and one action every turn.",
+    svg:svg(A.unit(80,66,24,tok(F,U.letter,{level:2,hp:0.7}))+'<line x1="108" y1="52" x2="170" y2="30" stroke="#566" /><line x1="108" y1="84" x2="170" y2="100" stroke="#566"/><line x1="106" y1="62" x2="170" y2="64" stroke="#566"/>'+
+      lbl(176,33,"Letter = unit, shape = side",{a:"start"})+lbl(176,67,"L2 = level (max 5)",{a:"start"})+lbl(176,103,"Green bar = HP",{a:"start"})+lbl(80,125,dd.name,{b:1,c:"#eceaf6"}))});
+  // 3 move
+  var m0=pz(0),m1=pz(1),m2=pz(2),m3=pz(3),m4=pz(4),m5=pz(5);
+  cards.push({title:"Move",text:"Tap one of your units, then tap a glowing tile. Moving is optional and happens once per turn, before you act. You can't walk through units, water or the Hermit.",
+    svg:svg([m0,m1,m2,m3,m4,m5].map(function(p,i){return A.hex(p.x,p.y,20,{stroke:i>0&&i<4?"#7c8cff":"#3a4166",sw:i>0&&i<4?3:1.5});}).join("")+A.water(pz(5).x,pz(5).y,20)+'<g>'+A.unit(m0.x,m0.y,13,tok(F,U.letter,{level:1,hp:1}))+A.move(m3.x-m0.x,m3.y-m0.y,3)+'</g>'+lbl(160,140,"Glowing tiles = where this unit can go",{c:"#aab"}))});
+  // 4 attack
+  var b=function(i,x){var d=techs[i];if(!d)return "";var t=d.t,locked=(t.unlock||1)>1;return A.btn(x,10,98,44,(i+1)+". "+esc(t.name),locked?"Unlocks at level "+t.unlock:(t.cost?t.cost+" chi":"free")+" · dmg "+d.dmg+" · rng "+t.range+(t.selfHp?" · -"+t.selfHp+" HP":""),{dim:locked,sel:i===0});};
+  var e=pz(0,250,92);
+  cards.push({title:"Attack",text:"Tap an enemy in range. Coloured attacks spend chi (it refills every turn) and the second one unlocks at level 3. The grey attack is free, reaches 3 hexes and gets stronger with level. Some attacks cost you HP too. The target's DEF reduces damage.",
+    svg:svg(b(0,8)+b(1,111)+b(2,214)+A.unit(70,108,14,tok(F,U.letter,{hp:1}))+'<circle cx="70" cy="108" r="40" fill="none" stroke="#7c8cff" stroke-dasharray="4 3"/>'+A.unit(e.x,e.y+16,14,tok(O,"X",{hp:0.6}))+'<g><text x="'+e.x+'" y="'+(e.y-12)+'" text-anchor="middle" font-size="15" font-weight="800" fill="#ff6b6b">-'+(techs[0]?techs[0].dmg:20)+'</text>'+A.pop(3)+'</g>'+lbl(160,112,"in range",{s:9}))});
+  // 5 land
+  cards.push({title:"Claim land",text:"Stand on a land tile and press Claim. It costs HP (2 x level) and is refused if it would defeat the unit. You get "+P.land+" star points, plus a level the first time you claim each tile. Enemies can steal it back, and that scores too.",
+    svg:svg(A.land(160,78,44)+A.unit(160,78,16,tok(F,U.letter,{level:1,hp:0.9}))+'<g><text x="160" y="28" text-anchor="middle" font-size="18" font-weight="800" fill="#e8b84a">+'+P.land+' ★</text>'+A.pop(3)+'</g><g><text x="226" y="96" font-size="12" font-weight="700" fill="#ff6b6b">-2 HP</text>'+A.pop(3)+'</g>'+A.btn(20,100,70,36,"Claim","-2 HP",{sel:true}))});
+  // 6 chests
+  cards.push({title:"Chests",text:"Move onto a chest tile and press Open. A chest gives star points (its level) and levels the unit up. Chests are shared, so the first to reach one gets it.",
+    svg:svg(A.hex(m0.x+30,m0.y,20)+A.hex(m1.x+30,m1.y,20)+A.chest(m1.x+30,m1.y)+'<g>'+A.unit(m0.x+30,m0.y,13,tok(F,U.letter,{level:1,hp:1}))+A.move(m1.x-m0.x,m1.y-m0.y,3)+'</g><g><text x="'+(m1.x+30)+'" y="'+(m1.y-30)+'" text-anchor="middle" font-size="14" font-weight="800" fill="#e8b84a">+1 ★  +1 level</text>'+A.pop(3)+'</g>'+A.btn(190,100,80,36,"Open","chest"))});
+  // 7 hermit
+  cards.push({title:"Talk to the Hermit",text:"The Old Hermit stands in the middle of the map. Stand next to him and press Talk for "+P.npcTalk+" star points. Each side can talk to him once. Nobody can hurt him, so he is a free reward for whoever walks over first.",
+    svg:svg(A.hex(160,70,34,{fill:"#2a2f4a"})+A.npc(160,70,18)+A.unit(127,89,13,tok(F,U.letter,{hp:1}))+'<g><text x="160" y="22" text-anchor="middle" font-size="16" font-weight="800" fill="#e8b84a">+'+P.npcTalk+' ★</text>'+A.pop(3)+'</g>'+A.btn(216,96,80,38,"Talk","NPC",{sel:true})+lbl(70,130,"stand next to him",{s:9}))});
+  // 8 warden
+  cards.push({title:"Wardens",text:"Wardens are neutral bosses. At the end of every round each Warden hits every unit next to it, so don't linger. Defeat one for "+P.miniBossMult+" x its level in star points and a free level.",
+    svg:svg(A.boss(160,66,26,2)+A.unit(118,50,13,tok(F,U.letter,{hp:0.5}))+A.unit(202,88,13,tok(O,"X",{hp:0.6}))+'<g><text x="125" y="96" font-size="12" font-weight="800" fill="#ff6b6b">-hit</text>'+A.pop(3)+'</g><g><text x="190" y="52" font-size="12" font-weight="800" fill="#ff6b6b">-hit</text>'+A.pop(3)+'</g>'+lbl(160,132,"end of round: adjacent units take a hit",{s:10}))});
+  // 9 levels
+  var a2=techs[1];
+  cards.push({title:"Levels and unlocks",text:"Claiming land, opening chests and fighting earn EXP and levels (max 5). Each level adds a little ATK, HP and DEF. At level 3 your second attack unlocks and your chi reserve grows by 2. The grey attack grows from "+SE.data.rules.grey.base+" to "+SE.data.rules.grey.cap+" by level 5.",
+    svg:svg([1,2,3].map(function(l,i){return A.unit(50+i*110,38,15,tok(F,U.letter,{level:l,hp:1}));}).join("")+'<text x="105" y="42" text-anchor="middle" fill="#9aa0bd">→</text><text x="215" y="42" text-anchor="middle" fill="#9aa0bd">→</text>'+
+      A.btn(40,80,110,40,a2?esc(a2.t.name):"2nd attack","Unlocks at level 3",{dim:true})+'<text x="160" y="104" text-anchor="middle" fill="#e8b84a" font-size="16">→</text>'+A.btn(170,80,110,40,a2?esc(a2.t.name):"2nd attack","unlocked!",{sel:true})+lbl(160,142,"Grey attack: 5 → 10 → 15 → 20 → 25",{s:10,c:"#c9cde6"}))});
+  // 10 winning
+  cards.push({title:"How the match ends",text:"First side to the star point goal wins. In Custom Match you can also set a match clock (it pauses if you leave the tab) or a round limit; then the higher score wins. Defeated units return at your base next turn with half HP, so fights cost tempo, not the game. In the full game the world level also rises over time (every turn), so the world gets more dangerous the longer a match runs. This test build doesn't use it yet.",
+    svg:svg(star(80,66,28)+lbl(80,112,"point goal",{b:1,c:"#e8b84a"})+'<circle cx="160" cy="66" r="26" fill="none" stroke="#9aa0bd" stroke-width="3"/><line x1="160" y1="66" x2="160" y2="48" stroke="#9aa0bd" stroke-width="3"/><line x1="160" y1="66" x2="174" y2="72" stroke="#9aa0bd" stroke-width="3"/>'+lbl(160,112,"match clock",{b:1})+
+      A.unit(240,66,18,tok(F,U.letter,{hp:1}))+lbl(240,112,"returns at base",{b:1,c:"#5ad08a"}))});
+  return cards;
+};
+// Run the card sequence inside a container. opts: {startLabel,onDone,onSkip,showSkip}
+T.render=function(host,ctx,opts){
+  opts=opts||{};var cards=T.cards(ctx),i=0;
+  function draw(){
+    var c=cards[i];
+    host.innerHTML='<p class="note">Tutorial '+(i+1)+'/'+cards.length+'</p><h2>'+esc(c.title)+'</h2>'+c.svg+'<p class="ttext">'+esc(c.text)+'</p>'+
+      '<div class="dots" aria-hidden="true">'+cards.map(function(_,k){return '<i class="'+(k===i?"on":"")+'"></i>';}).join("")+'</div>'+
+      '<div class="trow">'+(i>0?'<button id="t-back">Back</button>':"")+'<button class="primary" id="t-next">'+(i<cards.length-1?"Next":(opts.startLabel||"Done"))+'</button></div>'+
+      (opts.showSkip?'<button class="small" id="t-skip">Skip tutorial</button>':"");
+    var nx=host.querySelector("#t-next");nx.focus();
+    nx.addEventListener("click",function(){if(i<cards.length-1){i++;draw();}else if(opts.onDone)opts.onDone();});
+    var bk=host.querySelector("#t-back");if(bk)bk.addEventListener("click",function(){i--;draw();});
+    var sk=host.querySelector("#t-skip");if(sk)sk.addEventListener("click",function(){if(opts.onSkip)opts.onSkip();});
+  }
+  draw();
+};
+// Modal version
+T.run=function(ctx,opts){
+  var d=G.document.createElement("div");d.className="overlay";d.innerHTML='<div class="modal wide" role="dialog" aria-label="Tutorial"><div id="t-host"></div></div>';G.document.body.appendChild(d);
+  function close(){d.remove();}
+  T.render(d.querySelector("#t-host"),ctx,{startLabel:opts&&opts.startLabel,showSkip:!opts||opts.showSkip!==false,
+    onDone:function(){close();if(opts&&opts.onDone)opts.onDone();},onSkip:function(){close();if(opts&&(opts.onSkip||opts.onDone))(opts.onSkip||opts.onDone)();}});
+  return d;
+};
+// Guide overlay with tabs
+T.guide=function(ctx,onClose){
+  var d=G.document.createElement("div");d.className="overlay";
+  d.innerHTML='<div class="modal wide guide" role="dialog" aria-label="Guide"><div class="tabs"><button data-tab="how" class="on">How to play</button><button data-tab="pts">Points</button><button data-tab="units">Units</button><button data-tab="keys">Keys</button></div><div id="g-body"></div><button class="primary" id="g-close">Close guide</button></div>';
+  G.document.body.appendChild(d);var body=d.querySelector("#g-body");
+  function ptsHtml(){var P=SE.data.rules.points,g=SE.data.rules.grey;
+    return '<h2>Star points</h2><table class="keys"><tr><td>Capture land (each claim, steals too)</td><td>'+P.land+'</td></tr><tr><td>Defeat a unit</td><td>'+P.kill+'</td></tr><tr><td>Open a chest</td><td>its level</td></tr><tr><td>Defeat a Warden (mini boss)</td><td>'+P.miniBossMult+' x its level</td></tr><tr><td>Talk to the Hermit (once per side)</td><td>'+P.npcTalk+'</td></tr></table>'+
+      '<h2>Good to know</h2><ul class="gl"><li>One move and one action per unit per turn. Move first, then act.</li><li>Claiming land costs 2 x level HP and is refused if it would defeat the unit.</li><li>Chi refills fully at the start of each of your turns.</li><li>Second attack unlocks at level 3 (+2 chi reserve). Grey attack: free, range '+g.range+', damage '+g.base+' +'+g.perLevel+' per level, max '+g.cap+'.</li><li>Defense (DEF) is subtracted from each hit (minimum 1).</li><li>Wardens hit everyone next to them at the end of each round.</li><li>In the full game the world level rises every turn and the world gets tougher. Not active in this test build yet.</li><li>Defeated units return at their start tile next turn with half HP (unless switched off in Custom Match).</li></ul>';}
+  function unitsHtml(){var ids=[ctx&&ctx.faction,ctx&&ctx.opponent].filter(Boolean),seen={},out="";
+    if(!ids.length)ids=Object.keys(SE.data.units.factions);
+    ids.forEach(function(id){if(seen[id])return;seen[id]=1;var f=fac(id);out+='<h2>'+esc(f.name)+'</h2>';
+      f.roster.forEach(function(uid){var u=SE.data.units.units[uid];
+        out+='<div class="ucard"><b>'+esc(u.name)+'</b> <span class="note">HP '+u.hp+' · DEF '+u.def+' · move '+u.move+' · chi '+u.chiP+'</span><ul class="gl">'+u.techs.map(function(tid){var t=R.tech(tid),dmg=R.basePower({level:1,atk:u.atk},t);
+          return '<li>'+esc(t.name)+': '+(t.grey?'free':t.cost+' chi')+', dmg '+dmg+(t.grey?' (grows to '+SE.data.rules.grey.cap+')':'')+', range '+t.range+(t.selfHp?', costs you '+t.selfHp+' HP':'')+((t.unlock||1)>1?', unlocks at level '+t.unlock:'')+'</li>';}).join("")+'</ul></div>';});});
+    return out;}
+  function keysHtml(){var K=SE.store.keys();return '<h2>Keyboard</h2><table class="keys">'+Object.keys(SE.keyLabels).map(function(k){return '<tr><td>'+SE.keyLabels[k]+'</td><td><kbd>'+(K[k]===" "?"Space":esc(K[k]))+'</kbd></td></tr>';}).join("")+'</table><p class="note">Mouse and touch always work.</p>';}
+  function show(tab){
+    d.querySelectorAll("[data-tab]").forEach(function(b){b.classList.toggle("on",b.getAttribute("data-tab")===tab);});
+    if(tab==="how")T.render(body,ctx,{startLabel:"Done",onDone:function(){show("pts");}});
+    else body.innerHTML=tab==="pts"?ptsHtml():tab==="units"?unitsHtml():keysHtml();
+  }
+  d.querySelectorAll("[data-tab]").forEach(function(b){b.addEventListener("click",function(){show(b.getAttribute("data-tab"));});});
+  d.querySelector("#g-close").addEventListener("click",function(){d.remove();if(onClose)onClose();});
+  show("how");return d;
+};
+})(typeof window!=='undefined'?window:globalThis);
+
+</script>
+<script>
 // Match view: SVG board, panels, input (mouse/touch/keyboard), CPU turns, match clock, hints.
 (function(G){var SE=G.SE=G.SE||{data:{}};
 var H=SE.hex,R=SE.rules,AI=SE.ai,S=34;
@@ -1117,6 +1269,7 @@ SE.ui={
       '<span class="pill">Round '+st.round+(o.roundLimit?'/'+o.roundLimit:'')+'</span>'+
       (v.limitMs?'<span class="pill" id="clock">'+SE.ui.fmtClock(v)+'</span>':'')+
       '<span class="pill turnpill">'+(st.turn==="A"?"Your turn":"CPU turn")+'</span>'+
+      (o.practice?'<span class="pill">Practice</span><button class="small" id="btn-guide">Guide</button>':"")+
       '<button class="small" id="btn-pause" aria-label="Pause">Menu</button></div>';
   },
   updateTop:function(v){var c=$("#clock");if(c)c.textContent=SE.ui.fmtClock(v);},
@@ -1165,9 +1318,10 @@ SE.ui={
     var vb=(minX-4)+" "+(minY-4)+" "+(maxX-minX+8)+" "+(maxY-minY+8);
     var info=SE.ui.panelHtml(v,u);
     var cb=SE.store.settings().colorblind,fc=SE.data.units.factions,colA=cb?"#0072B2":fc[st.factions.A].color,colB=cb?"#E69F00":fc[st.factions.B].color;
+    if(!cb&&st.factions.A===st.factions.B)colB=SE.ui.shade(colB,-0.45);
     root.innerHTML='<div class="match" style="--sideA:'+colA+';--sideB:'+colB+'"><div class="top">'+SE.ui.topHtml(v)+'</div>'+
       '<div class="boardwrap"><svg class="board" viewBox="'+vb+'" role="img" aria-label="Game board">'+out+'</svg></div>'+
-      '<div class="side">'+(v.hintText&&SE.store.settings().hints?'<div class="hint"><span>'+esc(v.hintText)+'</span><button class="small" id="btn-hintx" aria-label="Dismiss hint">OK</button></div>':'')+
+      '<div class="side">'+(v.hintText&&SE.store.settings().hints?'<div class="hint"><span>'+esc(v.hintText)+'</span><span><button class="link" id="btn-hintoff">Hints off</button><button class="small" id="btn-hintx" aria-label="Dismiss hint">OK</button></span></div>':'')+
       info+'</div></div>';
     SE.ui.bind(v);
   },
@@ -1181,7 +1335,7 @@ SE.ui={
         (SE.ui.usesSecondary(u)?'<span>Chi 2 '+u.chi.s+'/'+u.maxChi.s+' <span class="bar chi"><i style="width:'+(u.maxChi.s?100*u.chi.s/u.maxChi.s:0)+'%"></i></span></span>':'')+
         '<span>ATK '+u.atk+' DEF '+u.def+'</span><span class="note">'+(u.moved?"moved":"can move")+' / '+(u.acted?"acted":"can act")+'</span></div>';
       u.techs.forEach(function(id,i){var t=R.tech(id),locked=u.level<(t.unlock||1),noChi=!R.canUse(u,t)&&!locked;
-        acts+='<button data-tech="'+id+'" class="'+(v.tech===id?"sel ":"")+(locked||noChi||u.acted?"dim":"")+'" title="'+esc(t.text||"")+'">'+(i+1)+'. '+esc(t.name)+'<br><small>'+
+        acts+='<button data-tech="'+id+'" class="'+(v.tech===id?"sel ":"")+((v.newTech&&v.newTech[u.id+":"+id])?"newbtn ":"")+(locked||noChi||u.acted?"dim":"")+'" title="'+esc(t.text||"")+'">'+(i+1)+'. '+esc(t.name)+'<br><small>'+
           (locked?'Unlocks at level '+t.unlock:(t.cost?t.cost+(t.chi==="s"?' chi 2':' chi'):'free')+' · dmg '+R.basePower(u,t)+' · rng '+t.range+(t.selfHp?' · -'+t.selfHp+' HP':''))+'</small></button>';});
       acts+='<button data-act="claim" class="'+(R.canClaim(st,u).ok?"":"dim")+'">Claim<br><small>-'+R.claimCost(u)+' HP</small></button>'+
             '<button data-act="open" class="'+(R.canOpen(st,u).ok?"":"dim")+'">Open<br><small>chest</small></button>'+
@@ -1199,12 +1353,17 @@ SE.ui={
     root.querySelectorAll("[data-act]").forEach(function(e){e.addEventListener("click",function(){SE.ui.doAct(v,e.getAttribute("data-act"));});});
     var b=$("#btn-hintx",root);if(b)b.addEventListener("click",function(){v.hintText=null;SE.ui.render(v);});
     var p=$("#btn-pause",root);if(p)p.addEventListener("click",function(){SE.ui.pauseMenu(v);});
+    var gd=$("#btn-guide",root);if(gd)gd.addEventListener("click",function(){SE.ui.openGuide(v);});
+    var hx=$("#btn-hintoff",root);if(hx)hx.addEventListener("click",function(){SE.store.set("hints",false);v.hintText=null;SE.ui.render(v);toast("Hints off. Turn them back on in Options or the pause menu.");});
   },
+  shade:function(hex,f){var n=parseInt(hex.slice(1),16),r=n>>16,g=n>>8&255,b=n&255,t=f<0?0:255,k=Math.abs(f);
+    function m(c){return Math.round((t-c)*k+c);}return "#"+((1<<24)+(m(r)<<16)+(m(g)<<8)+m(b)).toString(16).slice(1);},
   usesSecondary:function(u){return u.techs.some(function(id){var t=R.tech(id);return t.chi==="s"&&t.cost>0;});},
   strongest:function(u,ids){return ids.slice().sort(function(a,b){return R.basePower(u,R.tech(b))-R.basePower(u,R.tech(a));})[0];},
   pickTech:function(v,id){if(!SE.ui.isMyTurn(v))return;var u=SE.ui.sunit(v),t=R.tech(id);
     if(u&&u.level<(t.unlock||1)){toast("Unlocks at level "+t.unlock+" (this unit is level "+u.level+").");return;}
     if(u&&!R.canUse(u,t)){toast("Not enough chi for that attack this turn.");}
+    if(v.newTech)delete v.newTech[(u?u.id:0)+":"+id];
     v.tech=id;SE.ui.render(v);},
   select:function(v,u){
     v.sel=u.id;v.cursor={q:u.q,r:u.r};
@@ -1253,8 +1412,14 @@ SE.ui={
   },
   afterAction:function(v){
     if(v.st.over){SE.ui.render(v);v.timers.push(G.setTimeout(function(){if(!v.ended){var root=v.root;SE.ui.stop(v);v.onExit("result",v.st,{elapsed:v.elapsed});}},900));return;}
-    R.alive(v.st,"A").forEach(function(u){u.techs.forEach(function(id){var t=R.tech(id);if((t.unlock||1)>1&&u.level>=t.unlock&&!v.unlockSeen){v.unlockSeen=1;SE.ui.hint(v,"unlock");}});});
+    SE.ui.checkUnlocks(v);
     SE.ui.render(v);SE.ui.maybeCpu(v);
+  },
+  checkUnlocks:function(v){
+    v.newTech=v.newTech||{};v.unlockSeen=v.unlockSeen||{};
+    R.alive(v.st,"A").forEach(function(u){u.techs.forEach(function(id){var t=R.tech(id),k=u.id+":"+id;
+      if((t.unlock||1)>1&&u.level>=t.unlock&&!v.unlockSeen[k]){v.unlockSeen[k]=1;v.newTech[k]=1;
+        if(SE.store.settings().hints&&v.st.opts.hints){v.hintText=u.name+" reached level "+u.level+"! "+t.name+" is unlocked"+(u.maxChi.p>0?" and your chi reserve grew":"")+". Look for the glowing button.";}}});});
   },
   maybeCpu:function(v){
     if(v.st.over||v.st.turn!=="B"||v.cpuBusy)return;
@@ -1269,11 +1434,19 @@ SE.ui={
     };
     v.timers.push(G.setTimeout(step,500));
   },
+  openGuide:function(v){
+    v.paused=true;SE.tutorial.guide({faction:v.st.factions.A,opponent:v.st.factions.B,goal:v.st.opts.pointLimit<100000?v.st.opts.pointLimit:75},function(){v.paused=false;});
+  },
   pauseMenu:function(v){
-    v.paused=true;var d=G.document.createElement("div");d.className="overlay";
-    d.innerHTML='<div class="modal"><h2>Paused</h2><p class="note">The match clock is stopped.</p><button class="primary" id="p-res">Resume</button><button id="p-quit">Quit to main menu</button></div>';
+    v.paused=true;var d=G.document.createElement("div");d.className="overlay";var prac=v.st.opts.practice;
+    d.innerHTML='<div class="modal"><h2>Paused</h2><p class="note">The match clock is stopped.</p><button class="primary" id="p-res">Resume</button><button id="p-how">How to play</button>'+
+      '<label class="row" style="justify-content:center"><input type="checkbox" id="p-hints"'+(SE.store.settings().hints?" checked":"")+'> On-screen hints</label>'+
+      (prac?'<button id="p-restart">Restart practice</button>':"")+'<button id="p-quit">Quit to main menu</button></div>';
     G.document.body.appendChild(d);
     $("#p-res",d).addEventListener("click",function(){v.paused=false;d.remove();});
+    $("#p-how",d).addEventListener("click",function(){d.remove();SE.ui.openGuide(v);});
+    $("#p-hints",d).addEventListener("change",function(e){SE.store.set("hints",e.target.checked);if(!e.target.checked)v.hintText=null;SE.ui.render(v);});
+    var rs=$("#p-restart",d);if(rs)rs.addEventListener("click",function(){d.remove();var o=Object.assign({},v.st.opts,{seed:(Date.now()&0xffffff)});SE.ui.stop(v);v.onExit("restart",o);});
     $("#p-quit",d).addEventListener("click",function(){d.remove();SE.ui.stop(v);v.onExit("quit");});
     $("#p-res",d).focus();
   },
@@ -1323,10 +1496,10 @@ M.boot=function(el){root=el;SE.store.apply();M.title();};
 M.title=function(){
   screen(HERO+'<h1 class="logo">STAR EVOLUTION</h1><p class="sub">Take land. Take risks. Take the stars.</p>'+
    '<div class="menu"><button class="primary" id="m-start">Start Game</button><button id="m-builder">Faction Builder</button><button id="m-practice">Practice Mode</button><button id="m-options">Options</button><button id="m-exit">Exit Game</button></div>'+
-   '<p class="note">Web test build (Pass A). Placeholder numbers and art.</p>');
+   '<p class="note">Web test build (Pass B). Placeholder numbers and art.</p>');
   on("#m-start",M.factionPick);
   on("#m-builder",function(){SE.toast("Faction Builder is coming in a later update.");});
-  on("#m-practice",function(){SE.toast("Practice Mode is coming in a later update.");});
+  on("#m-practice",M.practice);
   on("#m-options",function(){M.options(M.title);});
   on("#m-exit",M.goodbye);
 };
@@ -1380,28 +1553,32 @@ M.custom=function(){
     M.beforeMatch(opts);});
   on("#c-back",function(){flow.custom=read();M.modePick();});
 };
-var TUT=[
- ["Move","Tap one of your units, then tap a glowing tile. Each unit gets one move and one action per turn."],
- ["Attack","Tap an enemy in range. Free attacks cost nothing; techniques cost chi (and sometimes HP) but hit harder."],
- ["Land and chests","Stand on a land tile and press Claim for 10 star points and a level. Chests give points and a level too."],
- ["Talk to the Hermit","Walk next to the Old Hermit (the ? in the middle) and press Talk. Your side can talk to him once for 5 star points. Nobody can hurt him."]];
 M.beforeMatch=function(opts){
   if(SE.store.settings().seenTutorial){M.play(opts);return;}
-  var i=0;
-  function show(){
-    var d=G.document.createElement("div");d.className="overlay";var t=TUT[i];
-    d.innerHTML='<div class="modal" role="dialog" aria-label="Quick tutorial"><p class="note">Quick tutorial '+(i+1)+'/'+TUT.length+'</p><h2>'+t[0]+'</h2><p>'+t[1]+'</p>'+
-      '<button class="primary" id="t-next">'+(i<TUT.length-1?"Next":"Start match")+'</button><button id="t-skip">Skip tutorial</button></div>';
-    G.document.body.appendChild(d);$("#t-next",d).focus();
-    $("#t-next",d).addEventListener("click",function(){d.remove();if(++i<TUT.length)show();else{SE.store.set("seenTutorial",true);M.play(opts);}});
-    $("#t-skip",d).addEventListener("click",function(){d.remove();SE.store.set("seenTutorial",true);M.play(opts);});
-  }
-  show();
+  SE.tutorial.run({faction:opts.faction,opponent:opts.opponent,goal:opts.pointLimit},{startLabel:"Start match",showSkip:true,
+    onDone:function(){SE.store.set("seenTutorial",true);M.play(opts);}});
+};
+// Practice Mode: any faction vs any, guide always on hand
+M.practice=function(){
+  var F=SE.data.units.factions,ids=Object.keys(F),p=flow.practice||{me:ids[0],opp:ids[1]||ids[0],first:"random",goal:"75"};
+  function opts(sel){return ids.map(function(id){return '<option value="'+id+'"'+(sel===id?" selected":"")+'>'+esc(F[id].name)+'</option>';}).join("");}
+  screen('<h2>Practice Mode</h2><div class="form"><p class="note" style="margin:0">Learn at your own pace. No clock, hints on, and a Guide button on the match screen (tutorial, points, unit stats).</p>'+
+   '<div class="field"><label for="p-me">You play</label><select id="p-me">'+opts(p.me)+'</select></div>'+
+   '<div class="field"><label for="p-opp">CPU plays</label><select id="p-opp">'+opts(p.opp)+'</select></div>'+
+   '<div class="field"><label for="p-first">Who moves first</label><select id="p-first"><option value="random">Random</option><option value="A">You</option><option value="B">CPU</option></select></div>'+
+   '<div class="field"><label for="p-goal">Star point goal</label><select id="p-goal"><option value="50">50</option><option value="75">75</option><option value="100">100</option><option value="0">No goal (play until you quit)</option></select></div></div>'+
+   '<div class="menu"><button class="primary" id="p-go">Start practice</button><button id="p-guide">Open the guide</button><button id="p-back">Back</button></div>');
+  $("#p-first").value=p.first;$("#p-goal").value=p.goal;
+  function read(){return {me:$("#p-me").value,opp:$("#p-opp").value,first:$("#p-first").value,goal:$("#p-goal").value};}
+  on("#p-go",function(){var v=read();flow.practice=v;
+    M.play({faction:v.me,opponent:v.opp,rules:"basic",pointLimit:+v.goal||100000,clockMin:0,roundLimit:0,respawn:true,firstSide:v.first,hints:true,practice:true,seed:(Date.now()&0xffffff)});});
+  on("#p-guide",function(){var v=read();flow.practice=v;SE.tutorial.guide({faction:v.me,opponent:v.opp,goal:+v.goal||75});});
+  on("#p-back",function(){flow.practice=read();M.title();});
 };
 M.play=function(opts){
   flow.lastOpts=opts;
   SE.ui.start(root,opts,function(kind,st,extra){
-    if(kind==="result")M.result(st,extra);else M.title();});
+    if(kind==="result")M.result(st,extra);else if(kind==="restart")M.play(st);else M.title();});
 };
 M.result=function(st,extra){
   var win=st.winner==="A"?"You win!":st.winner==="B"?"The CPU wins":"Draw";
@@ -1423,10 +1600,11 @@ M.options=function(back){
    '<div class="row"><label><input type="checkbox" id="o-hints"'+(s.hints?" checked":"")+'> On-screen hints</label></div>'+
    '<div><b>Keyboard</b><table class="keys">'+Object.keys(SE.keyLabels).map(function(k){return '<tr><td>'+SE.keyLabels[k]+'</td><td><kbd>'+(K[k]===" "?"Space":esc(K[k]))+'</kbd></td></tr>';}).join("")+'</table>'+
    '<p class="note">Mouse and touch always work. Rebinding keys is coming in a later update.</p></div>'+
-   '<button id="o-reset">Show the tutorial again next game</button></div><div class="menu"><button class="primary" id="o-back">Back</button></div>');
+   '<button id="o-tut">Watch the tutorial now</button><button id="o-reset">Show the tutorial before my next match</button></div><div class="menu"><button class="primary" id="o-back">Back</button></div>');
   $("#o-scale").addEventListener("input",function(e){$("#o-sl").textContent=e.target.value+"%";SE.store.set("uiScale",+e.target.value);});
   $("#o-cb").addEventListener("change",function(e){SE.store.set("colorblind",e.target.checked);});
   $("#o-hints").addEventListener("change",function(e){SE.store.set("hints",e.target.checked);});
+  on("#o-tut",function(){SE.tutorial.run({faction:Object.keys(SE.data.units.factions)[0]},{startLabel:"Done",showSkip:false});});
   on("#o-reset",function(){SE.store.set("seenTutorial",false);SE.toast("Tutorial will show before your next match.");});
   on("#o-back",back);
 };
