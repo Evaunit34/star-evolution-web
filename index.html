@@ -3045,7 +3045,7 @@ U.sheet=function(v,id){
   q("#cs-x").addEventListener("click",function(){U.closeSheet(v);SE.ui.render(v);});
   var sh=q("#cs-show");if(sh)sh.addEventListener("click",function(){v.reveal=v.reveal||{};v.reveal[id]=!v.reveal[id];U.sheet(v,id);});
   var r=q("#cs-ret");if(r)r.addEventListener("click",function(){var res=R.stdReturn(st,SE.ui.me(v),id);if(!res.ok)toast(res.msg);else toast("Card sent to the bottom of your deck.");U.closeSheet(v);SE.ui.render(v);});
-  var pl=q("#cs-play");if(pl&&!why)pl.addEventListener("click",function(){
+  var pl=q("#cs-play");if(pl&&!why)pl.addEventListener("click",function(){if(v.coach&&!SE.coach.ok(v,"card"))return;
     var kind=R.cardTargetKind(id);U.closeSheet(v);
     if(kind){v.pick={id:id,kind:kind};v.preview=null;SE.ui.render(v);toast(U.pickText(v));}
     else U.play(v,id);});
@@ -3347,15 +3347,22 @@ function expSteps(){var X=SE.data.expert;return [
   {id:"god",text:"The god gets angry when nobody talks to it (the God n/"+X.god.maxAnger+" meter at the top) and smites the leader. Each talk lowers it by 1, or pay "+X.god.sacrifice.points+" points once with Calm god to lower it by "+X.god.sacrifice.calm+".",skip:function(v,st){return !R.expOn(st,"god");},ack:true},
   {id:"group",text:"Group attack: twice per game all your units strike together for a share of every enemy's max HP. It costs every action this turn and some chi next turn.",btn:'[data-act="group"]',skip:function(v,st){return !R.expOn(st,"group");},ack:true},
   {id:"barrier",text:"Barriers: each faction has a flame colour. Blue adds HP and soaks pierce and hazards, red adds HP, silver reflects some damage. Select a unit to see its barrier line.",skip:function(v,st){return !R.expOn(st,"barrier");},ack:true}];}
+// Guided turns lock input to the current step: only the listed buttons (and card plays) work until the step is done or the guide is skipped.
+// Selecting, moving, attacking and reading cards always work. Multi-turn steps (the god) also allow End turn so the match can move on.
+var ALLOW={cards:{cards:true,acts:[]},god:{acts:["talk","calm","end"]},karma:{acts:[]},trap:{acts:["trap"]},hazard:{acts:["hazard"]},group:{acts:["group"]},barrier:{acts:[]},end:{acts:["end"]}};
+C.ok=function(v,kind,arg){
+  var c=v.coach;if(!c||!c.lock)return true;if(kind==="act"&&(arg==="burn"))return true;
+  var i=C.info(v);if(!i)return true;var al=ALLOW[i.step.id]||{acts:[]},ok=kind==="card"?!!al.cards:al.acts.indexOf(arg)>=0;
+  if(!ok)SE.toast("Follow the guide: "+i.step.text+" (Skip guide unlocks everything.)");return ok;};
 function endStep(){return {id:"end",text:"That is the new layer. Use your move and action as usual, then press End turn.",btn:'[data-act="end"]',done:function(v,st){return st.turn!=="A";}};}
 C.init=function(v,opts){
   var S=SE.store.settings();if(opts.stage||opts.hot||(opts.hints===false&&!opts.forceCoach)||(!S.hints&&!opts.forceCoach))return;
   var steps=[],mark=[];
-  if(opts.forceCoach){steps=(opts.forceCoach==="std"?stdSteps():expSteps()).concat([endStep()]);v.coach={steps:steps,ack:{},mark:[]};return;}
+  if(opts.forceCoach){steps=(opts.forceCoach==="std"?stdSteps():expSteps()).concat([endStep()]);v.coach={steps:steps,ack:{},mark:[],lock:true};return;}
   if((opts.rules==="standard"||opts.rules==="expert")&&!S.coachStd){steps=steps.concat(stdSteps());mark.push("coachStd");}
   if(opts.rules==="expert"&&!S.coachExp){steps=steps.concat(expSteps());mark.push("coachExp");}
   if(!steps.length)return;
-  v.coach={steps:steps.concat([endStep()]),ack:{},mark:mark};
+  v.coach={steps:steps.concat([endStep()]),ack:{},mark:mark,lock:true};
 };
 C.info=function(v){
   var st=v.st,c=v.coach;if(!c)return null;
@@ -3370,7 +3377,7 @@ C.banner=function(v){
   var c=v.coach;if(!c||v.st.over)return "";
   var i=C.info(v);if(!i){C.finish(v);return "";}
   if(v.st.turn!=="A"){if(i.step.id==="end")C.finish(v);return "";}
-  return '<div class="hint stage"><span><b>Guided turn, step '+i.n+' of '+i.total+'.</b> '+esc(i.step.text)+'</span><span>'+(i.step.ack?'<button class="small" id="co-ack">Got it</button>':'')+'<button class="link" id="co-skip">Skip guide</button></span></div>';
+  return '<div class="hint stage"><span><b>Guided turn, step '+i.n+' of '+i.total+'.</b> '+esc(i.step.text)+(v.coach.lock?' <small class="note">Other buttons are paused until you finish this step.</small>':'')+'</span><span>'+(i.step.ack?'<button class="small" id="co-ack">Got it</button>':'')+'<button class="link" id="co-skip">Skip guide</button></span></div>';
 };
 C.bind=function(v){
   var root=v.root,i=v.coach?C.info(v):null;if(!i)return;
@@ -3817,6 +3824,7 @@ SE.ui={
     if(!SE.ui.isMyTurn(v))return;var st=v.st,u=SE.ui.sunit(v);
     if(a==="burn"){st.burn[SE.ui.me(v)]=!st.burn[SE.ui.me(v)];SE.ui.render(v);return;}   // keeps an open preview, which updates
     v.preview=null;
+    if(v.coach&&!SE.coach.ok(v,"act",a))return;
     if(a==="end"){SE.ui.endTurn(v);return;}
     if(v.stage&&!SE.stage.ok(v,"act",a))return;
     if(a==="hazard"){SE.stdui.hazardMenu(v);return;}
