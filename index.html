@@ -154,7 +154,8 @@ SE.data.rules={
   perHitExp:1, killExp:1,
   chestLevels:1, claimLevels:1, bossLevelUp:1,
   perLevel:{atk:1,maxHp:1,def:1},  // each level (from the sheet; +1 DEF is also per level)
-  grey:{base:5,perLevel:5,cap:25,range:3,ignoreDef:false},  // grey attack: free, always available, flat damage by level
+  secondRange:{cut:2,min:2},        // every second attack (a2) has this much less range (never below min), so units must move to fight
+  grey:{base:5,perLevel:5,cap:25,range:3,ignoreDef:false,minFrac:0.5},  // grey attack: free, always available, flat damage by level
   levelBonus:{3:{chiP:2,chiS:2}},  // one-time bonus on reaching level 3: +2 to both chi reserves
   claimDamageMult:2,               // claim costs 2 x level HP, refused if it would defeat the unit
   chiRegen:"full",                // chi refills fully at the start of each new turn (faster for mobile); a number = chi regained per turn
@@ -162,7 +163,7 @@ SE.data.rules={
   points:{land:10,kill:1,chestPerLevel:1,miniBossMult:2,uniqueBossMult:3,npcTalk:5},
   defaults:{pointLimit:75,clockMin:10,roundLimit:25,respawn:true,firstSide:"random"},
   limits:{pointMin:50,pointMax:300,clockMin:5,clockMax:20,roundMin:5,roundMax:60},
-  respawnHpFrac:0.5,               // defeated units return at their start tile next own turn with this share of max HP, 0 chi
+  respawnHpFrac:1,               // defeated units return at their start tile next own turn with this share of max HP, 0 chi
   bossRetaliates:true,
   factionEdge:{bonus:2,penalty:2,beats:{star_warriors:"chaos_warriors",chaos_warriors:"cultists",cultists:"star_warriors"}}  // +bonus damage to the faction you beat, -penalty to the faction that beats you (any attack, min 1 damage)
 };
@@ -868,7 +869,7 @@ SE.data.expert={
            reversal:{name:"Reversal",amount:0,desc:"hazards and traps that would hit your unit next to it hit the unit that placed them instead"}}},
   // Faction barriers (flames in each faction's colour): Star Warriors = blue flame with charges, Chaos Warriors = red flame, Cultists = silver flame.
   barrier:{
-    star_warriors:{charges:4,pierceCut:1,hazardCut:1,raiseChi:2},   // a charge is used when a Chaos pierce hit lands (that hit ignores 1 less DEF) or a hazard effect hits; raising it again is a free action for raiseChi primary chi
+    star_warriors:{hp:12,charges:4,pierceCut:1,hazardCut:1,raiseChi:2},   // +max HP (added after the range, grey and full-HP revive changes made Star Warriors lose to both other factions); a charge is used when a Chaos pierce hit lands (that hit ignores 1 less DEF) or a hazard effect hits; raising it again is a free action for raiseChi primary chi
     chaos_warriors:{hp:3,selfHpCut:1},                              // +max HP, and every technique that costs HP costs this much less
     cultists:{reflect:0.3,reflectMin:1,defVs:{chaos_warriors:12}}   // reflect = share of technique damage taken that is sent back (never defeats the attacker); defVs = extra DEF against that faction's attacks (the base DEF tuning is negative so Star Warriors can hurt them)
   },
@@ -877,7 +878,10 @@ SE.data.expert={
   // Can't be negated, ignores barriers and DEF, never hits bosses or the god. Next turn every unit of that side starts with chiLoss less primary chi.
   group:{uses:2,chiLoss:4,pct:{star_warriors:0.55,chaos_warriors:0.63,cultists:0.65},
     names:{star_warriors:"Five-Point Star",chaos_warriors:"Red Ki Blast",cultists:"Silver Beam"}},
-  revive:[0.8,0.7,0.5],                    // share of max HP a unit returns with: 1st, 2nd, then 3rd and every later return
+  revive:[1,1,1],                         // share of max HP a unit returns with: 1st, 2nd, then 3rd and every later return (all full HP after playtests; the table is kept for tuning)
+  // Expert board: bigger and random. Land, chests, water and bosses are placed at random each match, always as point-mirrored pairs so both sides are equal.
+  // Spawns stay at the edges, the god stays in the middle, nothing is placed in the `edge` columns next to a spawn.
+  map:{cols:11,rows:9,edge:2,land:8,chests:6,water:6,bosses:2,chestLevel:1},
   healNerf:2,                              // each healing card heals this much less per unit
   lives:[0,2,3,5],                         // choices for "lives per unit" (0 = off, defeated units keep returning)
   tuning:{def:{cultists:-6},power:{cultists:5,chaos_warriors:3,star_warriors:-1}},   // replaces the Standard tuning in Expert (CPU sim, 300 games each: Cultists beat Star Warriors ~64%, Chaos beats Cultists ~67%, Star Warriors beat Chaos ~67%)
@@ -938,8 +942,8 @@ R.addPoints=addPoints;
 R.defaultOpts=function(){var d=D().rules.defaults;return {faction:Object.keys(D().units.factions)[0],pointLimit:d.pointLimit,clockMin:d.clockMin,roundLimit:d.roundLimit,respawn:d.respawn,firstSide:d.firstSide,seed:1,rules:"basic",hints:true};};
 
 R.createMatch=function(o){
-  o=Object.assign(R.defaultOpts(),o||{});
-  var U=D().units,M=D().map,facs=Object.keys(U.factions);
+  o=Object.assign(R.defaultOpts(),o||{});rangeTune();
+  var U=D().units,M=(o.rules==="expert"&&R.expertMap&&(!o.expert||o.expert.map!==false))?R.expertMap(o):D().map,facs=Object.keys(U.factions);
   var fa=o.faction,others=facs.filter(function(f){return f!==fa;}),fb=o.opponent||others[Math.floor(R.rng((o.seed||1)+7919)()*others.length)];
   var st={opts:o,rng:R.rng(o.seed),turn:"A",round:1,points:{A:0,B:0},over:false,winner:null,endReason:null,
     log:[],units:[],land:{},claimed:{A:{},B:{}},chests:{},talked:{A:false,B:false},
@@ -973,7 +977,10 @@ R.inBoard=function(st,q,r){var o=H.toOffset(q,r);return o.c>=0&&o.c<st.cols&&o.r
 R.passable=function(st,q,r){
   if(!R.inBoard(st,q,r))return false;if(st.water[H.key(q,r)])return false;
   if(st.npc.q===q&&st.npc.r===r)return false;return !R.unitAt(st,q,r);};
-R.tech=function(id){
+var rtDone=null;
+function rangeTune(){var T=D().techniques,c=D().rules.secondRange;if(!T||!c||rtDone===T)return;rtDone=T;
+  Object.keys(T).forEach(function(id){if(/_a2$/.test(id)&&T[id].range>c.min)T[id].range=Math.max(c.min,T[id].range-c.cut);});}
+R.tech=function(id){rangeTune();
   if(R.isCopy(id)){var q=id.split(":"),b=D().techniques[q[1]],pen=+q[2]||0;return {id:id,name:"Copy: "+b.name,chi:b.chi,cost:b.cost,power:Math.max(0,b.power-pen),flat:b.flat,range:b.range,unlock:1,selfHp:b.selfHp||0,copy:true,text:"Copied from an enemy ("+b.power+" - "+pen+"). One use."};}
   if(id==="grey"){var g=D().rules.grey;return {id:"grey",name:"Grey",chi:"p",cost:0,power:0,range:g.range,unlock:1,grey:true,text:"Free attack with range "+g.range+". Damage grows with level."};}
   return D().techniques[id];};
@@ -1000,7 +1007,7 @@ R.move=function(st,u,q,r){
 R.edge=function(a,b){var E=D().rules.factionEdge;if(!E||!a||!b||a.faction===b.faction)return 0;
   if(E.beats[a.faction]===b.faction)return E.bonus;if(E.beats[b.faction]===a.faction)return -E.penalty;return 0;};
 R.defOf=function(t,a){return t.def+(t.defVs&&t.defVs[a.faction]||0);};
-R.damageOf=function(u,t,tech){var ig=tech.grey?D().rules.grey.ignoreDef:tech.ignoreDef;return Math.max(1,R.basePower(u,tech)-(ig?0:Math.max(0,R.defOf(t,u)-R.pierce(u,t)))+R.edge(u,t)+(tech.grey?0:(u.dmgB||0))-(t.barrier>0&&t.barrierVs&&t.barrierVs[u.faction]||0));};
+R.damageOf=function(u,t,tech){var ig=tech.grey?D().rules.grey.ignoreDef:tech.ignoreDef;var gf=tech.grey?Math.ceil(R.greyPower(u)*(D().rules.grey.minFrac||0)):0;return Math.max(1,gf,R.basePower(u,tech)-(ig?0:Math.max(0,R.defOf(t,u)-R.pierce(u,t)))+R.edge(u,t)+(tech.grey?0:(u.dmgB||0))-(t.barrier>0&&t.barrierVs&&t.barrierVs[u.faction]||0));};
 // What an attack would do, before it happens (damage range because of the +/- spread).
 R.preview=function(st,u,techId,t){
   var tech=R.tech(techId),sp=D().rules.damageSpread||0,base=R.damageOf(u,t,tech),lo=Math.max(1,base-sp),hi=Math.max(1,base+sp);
@@ -1476,7 +1483,7 @@ R.expertInit=function(st){
   st.opts.lives=n;
   if(R.expOn(st,"barrier")){var B=E().barrier;
     st.units.forEach(function(u){if(u.boss)return;var b=B[u.faction];if(!b)return;
-      if(u.faction==="star_warriors"){u.barrier=u.barrierMax=b.charges;u.barrierCut=b.pierceCut;u.barrierVs=b.vs||null;u.pierceVs=b.pierceVs||null;}
+      if(u.faction==="star_warriors"){if(b.hp){u.maxHp+=b.hp;u.hp+=b.hp;}u.barrier=u.barrierMax=b.charges;u.barrierCut=b.pierceCut;u.barrierVs=b.vs||null;u.pierceVs=b.pierceVs||null;}
       if(u.faction==="chaos_warriors"){u.maxHp+=b.hp;u.hp+=b.hp;u.selfCut=b.selfHpCut;}
       if(u.faction==="cultists"){u.reflect=b.reflect;u.defVs=b.defVs||null;}});}
 };
@@ -1704,6 +1711,31 @@ R.groupAttack=function(st,side){
     if(t.hp<=0){t.hp=0;t.dead=true;kills++;log(st,t.name+" is defeated!","kill");R.addPoints(st,side,P.kill,"kill");}});
   R.checkEnd(st);
   return {ok:true,hits:hits,kills:kills};
+};
+// ---- Expert board: 11 x 9, random mirrored land, chests, water and bosses ----
+R.expertMap=function(o){
+  var X=E().map,M0=SE.data.map,rng=R.rng((o.seed||1)+104729),cols=X.cols,rows=X.rows;
+  function mir(p){return [cols-1-p[0],rows-1-p[1]];}
+  function kk(p){return p[0]+","+p[1];}
+  var cr=Math.floor(rows/2),cc=Math.floor(cols/2),spA=[[0,cr-1],[0,cr],[0,cr+1]],spB=spA.map(mir);
+  for(var attempt=0;attempt<80;attempt++){
+    var used={},pool=[],i,j;
+    spA.concat(spB).forEach(function(p){used[kk(p)]=1;});used[kk([cc,cr])]=1;
+    for(var c=X.edge;c<=cols-1-X.edge;c++)for(var r=0;r<rows;r++){var p=[c,r];if(!used[kk(p)])pool.push(p);}
+    for(i=pool.length-1;i>0;i--){j=Math.floor(rng()*(i+1));var t=pool[i];pool[i]=pool[j];pool[j]=t;}
+    function take(n){var out=[];while(out.length<n*2&&pool.length){var p=pool.pop(),q=mir(p);if(used[kk(p)]||used[kk(q)]||kk(p)===kk(q))continue;used[kk(p)]=used[kk(q)]=1;out.push(p,q);}return out.length===n*2?out:null;}
+    var bosses=take(X.bosses/2),land=take(X.land/2),chests=take(X.chests/2),water=take(X.water/2);
+    if(!bosses||!land||!chests||!water)continue;
+    // everything must be reachable from the first spawn over non-water tiles
+    var wk={};water.forEach(function(p){wk[kk(p)]=1;});
+    var seen={},queue=[spA[0]];seen[kk(spA[0])]=1;
+    while(queue.length){var cur=queue.shift(),h=H.fromOffset(cur[0],cur[1]);
+      H.neighbors(h).forEach(function(nb){var o2=H.toOffset(nb.q,nb.r),np=[o2.c,o2.row];if(np[0]<0||np[0]>=cols||np[1]<0||np[1]>=rows||wk[kk(np)]||seen[kk(np)])return;seen[kk(np)]=1;queue.push(np);});}
+    var need=land.concat(chests,bosses,spB,[[cc,cr]]);
+    if(need.some(function(p){return !seen[kk(p)];}))continue;
+    return {cols:cols,rows:rows,spawns:{A:spA,B:spB},water:water,land:land,chests:chests.map(function(p){return {at:p,level:X.chestLevel};}),npc:{at:[cc,cr],name:M0.npc.name},bosses:bosses};
+  }
+  return M0;
 };
 // ---- revive HP scales with each return ----
 R.reviveFrac=function(st,u){
@@ -2928,9 +2960,9 @@ U.expertHtml=function(st){var X=SE.data.expert,hz=X.hazards,on=function(k){retur
   return '<ul class="rl">'+(on("hazards")?'<li><b>Hazards (Cultists).</b> Once per turn, for free, the Cultists hide a hazard on a tile. It hits enemy units on or next to it at the start of their turn (Life Steal: -'+hz.types.lifesteal.amount+' HP and you heal, Primary or Secondary Chi Drain: -'+hz.types.primary.amount+' chi), stacks with other hazards, and fades after '+hz.ttl+' of those turns. Max '+hz.max+' at once (a new one replaces the oldest) and never the same tile twice in a row.</li><li><b>Finding them.</b> Hazards are hidden until one hits you or you play Easy Scanner (rank + move around a unit). A found hazard can be dismantled by a unit standing next to it, which uses that unit\'s action.</li>':"")+
     (on("traps")?'<li><b>Speed Traps and Reversals (everyone).</b> A unit hides one trap per turn on a tile within '+X.traps.range+' of itself (free action, '+X.traps.chi+' primary chi). Speed Trap: enemies on or next to it start their turn with '+X.traps.types.speed.amount+' less move (stacks). Reversal: when an enemy hazard or Speed Trap would hit your unit next to it, the effect hits the unit that set it instead, and the Reversal is used up. Traps fade after '+X.traps.ttl+' turns, max '+X.traps.max+' each, are found by Easy Scanner and can be dismantled like hazards.</li>':"")+
     (on("god")?'<li><b>Angry god.</b> Its anger rises by 1 each round nobody talks to the '+esc(S().god.name)+' (max '+X.god.maxAnger+') and each talk lowers it by '+X.god.talkCalm+'. Once per game each side can offer '+X.god.sacrifice.points+' points to lower it by '+X.god.sacrifice.calm+' (Calm god button). From anger '+X.god.angerAfter+' it smites the leader every round, '+X.god.smite+' damage to each unit per smite, never below 1 HP, and at anger '+X.god.maxAnger+' it smites twice. You can talk any time, but only the first '+X.god.pointTalks+' talks per side score.</li>':"")+
-    (on("barrier")?'<li><b>Faction barriers</b> (a flame in each faction\'s colour). Star Warriors, blue: '+X.barrier.star_warriors.charges+' charges; a charge weakens a Chaos pierce hit by '+X.barrier.star_warriors.pierceCut+' DEF or a hazard effect by '+X.barrier.star_warriors.hazardCut+'. Raise it again for '+X.barrier.star_warriors.raiseChi+' chi (free action). Chaos Warriors, red: +'+X.barrier.chaos_warriors.hp+' max HP and '+X.barrier.chaos_warriors.selfHpCut+' less self-damage. Cultists, silver: '+Math.round(X.barrier.cultists.reflect*100)+'% of technique damage taken is reflected (never defeats) and they take '+X.barrier.cultists.defVs.chaos_warriors+' less damage from Chaos Warriors (their base DEF is lower than in Standard).</li>':"")+
+    (on("barrier")?'<li><b>Faction barriers</b> (a flame in each faction\'s colour). Star Warriors, blue: +'+X.barrier.star_warriors.hp+' max HP and '+X.barrier.star_warriors.charges+' charges; a charge weakens a Chaos pierce hit by '+X.barrier.star_warriors.pierceCut+' DEF or a hazard effect by '+X.barrier.star_warriors.hazardCut+'. Raise it again for '+X.barrier.star_warriors.raiseChi+' chi (free action). Chaos Warriors, red: +'+X.barrier.chaos_warriors.hp+' max HP and '+X.barrier.chaos_warriors.selfHpCut+' less self-damage. Cultists, silver: '+Math.round(X.barrier.cultists.reflect*100)+'% of technique damage taken is reflected (never defeats) and they take '+X.barrier.cultists.defVs.chaos_warriors+' less damage from Chaos Warriors (their base DEF is lower than in Standard).</li>':"")+
     (on("group")?'<li><b>Group attack</b> (twice per game, a button next to End turn). All three of your units must be alive and unused: they give up their action and the attack hits every enemy unit for a share of its max HP (Star Warriors, Five-Point Star '+Math.round(X.group.pct.star_warriors*100)+'%; Chaos Warriors, Red Ki Blast '+Math.round(X.group.pct.chaos_warriors*100)+'%; Cultists, Silver Beam '+Math.round(X.group.pct.cultists*100)+'%). It can\'t be negated and ignores barriers and DEF. The next turn each of your units starts with '+X.group.chiLoss+' less primary chi.</li>':"")+
-    (on("revive")?'<li><b>Weaker returns.</b> A defeated unit comes back with '+X.revive.map(function(f){return Math.round(f*100)+'%';}).join(', then ')+' of its max HP (and 50% after that).</li>':"")+
+    (on("map")?'<li><b>Bigger random map.</b> The Expert board is '+X.map.cols+' by '+X.map.rows+' and land, chests, water and bosses are placed at random each match, always as mirrored pairs so both sides are equal. The god stays in the middle, so you have to move around.</li>':"")+
     (on("heal")?'<li><b>Weaker healing.</b> Every healing card heals '+X.healNerf+' less per unit.</li>':"")+
     (st&&st.opts.lives?'<li><b>Lives.</b> Each unit has '+st.opts.lives+' lives. A defeated unit returns until its lives run out; a side with no units and no lives left loses.</li>':"")+
     '<li><b>Faction tweaks.</b> Small stat tweaks keep the factions balanced with the barriers. Numbers are placeholders.</li></ul>';};
@@ -3007,7 +3039,7 @@ T.cards=function(ctx){
     svg:svg([1,2,3].map(function(l,i){return A.unit(50+i*110,38,15,tok(F,U.letter,{level:l,hp:1}));}).join("")+'<text x="105" y="42" text-anchor="middle" fill="#9aa0bd">→</text><text x="215" y="42" text-anchor="middle" fill="#9aa0bd">→</text>'+
       A.btn(40,80,110,40,a2?esc(a2.t.name):"2nd attack","Unlocks at level 3",{dim:true})+'<text x="160" y="104" text-anchor="middle" fill="#e8b84a" font-size="16">→</text>'+A.btn(170,80,110,40,a2?esc(a2.t.name):"2nd attack","unlocked!",{sel:true})+lbl(160,142,"Grey attack: 5 → 10 → 15 → 20 → 25",{s:10,c:"#c9cde6"}))});
   // 10 winning
-  cards.push({title:"How the match ends",text:"First side to the star point goal wins. In Custom Match you can also set a match clock (it pauses if you leave the tab) or a round limit; then the higher score wins. Defeated units return at your base next turn with half HP, so fights cost tempo, not the game. In the full game the world level also rises over time (every turn), so the world gets more dangerous the longer a match runs. This test build doesn't use it yet.",
+  cards.push({title:"How the match ends",text:"First side to the star point goal wins. In Custom Match you can also set a match clock (it pauses if you leave the tab) or a round limit; then the higher score wins. Defeated units return at your base next turn with full HP, so fights cost tempo, not the game. In the full game the world level also rises over time (every turn), so the world gets more dangerous the longer a match runs. This test build doesn't use it yet.",
     svg:svg(star(80,66,28)+lbl(80,112,"point goal",{b:1,c:"#e8b84a"})+'<circle cx="160" cy="66" r="26" fill="none" stroke="#9aa0bd" stroke-width="3"/><line x1="160" y1="66" x2="160" y2="48" stroke="#9aa0bd" stroke-width="3"/><line x1="160" y1="66" x2="174" y2="72" stroke="#9aa0bd" stroke-width="3"/>'+lbl(160,112,"match clock",{b:1})+
       A.unit(240,66,18,tok(F,U.letter,{hp:1}))+lbl(240,112,"returns at base",{b:1,c:"#5ad08a"}))});
   return cards;
@@ -3043,7 +3075,7 @@ T.guide=function(ctx,onClose){
   G.document.body.appendChild(d);var body=d.querySelector("#g-body");
   function ptsHtml(){var P=SE.data.rules.points,g=SE.data.rules.grey;
     return '<h2>Star points</h2><table class="keys"><tr><td>Capture land (each claim, steals too)</td><td>'+P.land+'</td></tr><tr><td>Defeat a unit</td><td>'+P.kill+'</td></tr><tr><td>Open a chest</td><td>its level</td></tr><tr><td>Defeat a Warden (mini boss)</td><td>'+P.miniBossMult+' x its level</td></tr><tr><td>Talk to the Hermit (once per side)</td><td>'+P.npcTalk+'</td></tr></table>'+
-      '<h2>Good to know</h2><ul class="gl"><li>One move and one action per unit per turn. Move first, then act.</li><li>Claiming land costs 2 x level HP and is refused if it would defeat the unit.</li><li>Chi refills fully at the start of each of your turns.</li><li>Second attack unlocks at level 3 (+2 chi reserve). Grey attack: free, range '+g.range+', damage '+g.base+' +'+g.perLevel+' per level, max '+g.cap+'.</li><li>Defense (DEF) is subtracted from each hit (minimum 1).</li><li>Faction triangle: Star Warriors beat Chaos Warriors, Chaos Warriors beat Cultists, Cultists beat Star Warriors. +2 damage to the faction you beat, -2 to the faction that beats you (any attack).</li><li>Wardens hit everyone next to them at the end of each round.</li><li>In the full game the world level rises every turn and the world gets tougher. Not active in this test build yet.</li><li>Defeated units return at their start tile next turn with half HP (unless switched off in Custom Match).</li></ul>';}
+      '<h2>Good to know</h2><ul class="gl"><li>One move and one action per unit per turn. Move first, then act.</li><li>Claiming land costs 2 x level HP and is refused if it would defeat the unit.</li><li>Chi refills fully at the start of each of your turns.</li><li>Second attack unlocks at level 3 (+2 chi reserve). Grey attack: free, range '+g.range+', damage '+g.base+' +'+g.perLevel+' per level, max '+g.cap+'.</li><li>Defense (DEF) is subtracted from each hit (minimum 1).</li><li>Faction triangle: Star Warriors beat Chaos Warriors, Chaos Warriors beat Cultists, Cultists beat Star Warriors. +2 damage to the faction you beat, -2 to the faction that beats you (any attack).</li><li>Wardens hit everyone next to them at the end of each round.</li><li>In the full game the world level rises every turn and the world gets tougher. Not active in this test build yet.</li><li>Defeated units return at their start tile next turn with full HP (unless switched off in Custom Match).</li></ul>';}
   function unitsHtml(){var ids=[ctx&&ctx.faction,ctx&&ctx.opponent].filter(Boolean),seen={},out="";
     if(!ids.length)ids=Object.keys(SE.data.units.factions);
     ids.forEach(function(id){if(seen[id])return;seen[id]=1;var f=fac(id),pas=SE.data.instincts&&SE.data.instincts.passives[id];out+='<h2>'+esc(f.name)+'</h2>'+(pas?'<p class="note">Faction passive, '+esc(pas.name)+': '+esc(pas.type==="pierce"?"attacks ignore "+pas.base+" DEF, +"+pas.perLevel+" per level":pas.text)+'.</p>':'');
@@ -3299,10 +3331,13 @@ SE.ui={
         (SE.ui.usesSecondary(u)?'<span>Chi 2 '+u.chi.s+'/'+u.maxChi.s+' <span class="bar chi"><i style="width:'+(u.maxChi.s?100*u.chi.s/u.maxChi.s:0)+'%"></i></span></span>':'')+
         '<span><button class="small" data-card="'+u.uid+'">Character card</button></span>'+'<span>ATK '+u.atk+' DEF '+u.def+(u.lives?' \u00b7 Lives '+u.lives:'')+'</span>'+SE.ui.edgeLine(st,u)+SE.ui.barrierLine(st,u)+(R.passive(u)?'<span class="note">Passive: '+esc(R.passiveText(u))+'</span>':'')+(R.passive(u)&&R.passive(u).type==="burn"&&!v.stage&&u.side==="A"?'<label class="burn"><input type="checkbox" data-act="burn"'+(st.burn.A?' checked':'')+'> Star Burn: spend 1 extra chi for +'+(u.level>=3?R.passive(u).bonusL3:R.passive(u).bonus)+' damage</label>':'')+(u.instincts&&u.instincts.length?'<span class="note">Instincts: '+R.instinctList(u).map(function(i){return esc(i.name)+' '+Math.round(R.instinctChance(u)*100)+'%';}).join(', ')+'</span>':'')+'<span class="note">'+(u.moved?"moved":"can move")+' / '+(u.acted?"acted":"can act")+'</span></div>';
       var inR=my?u.techs.reduce(function(n,id){return n+R.targets(st,u,id).length;},0):0,tip=u.acted?"Done for this turn. Select another unit or press End turn.":(inR?(SE.store.settings().confirmAttacks?"Enemy in range! Tap the enemy with the red ring to preview the attack, then confirm.":"Enemy in range! Tap the enemy with the red ring to attack (the highlighted attack is used)."):!u.moved&&R.legalMoves(st,u).length?"Step 1: tap a glowing tile to move (or skip moving). Step 2: attack or press Claim / Open / Talk.":"Now act: tap an enemy in range, or press Claim / Open / Talk.");
+      var colT=my?u.techs.filter(function(id){return !R.tech(id).grey&&R.targets(st,u,id).length;}).length:0,greyT=my&&u.techs.indexOf("grey")>=0?R.targets(st,u,"grey").length:0;
+      if(my&&!u.acted&&!colT&&greyT){var near2=R.alive(st,"B").sort(function(a,b){return H.dist(u,a)-H.dist(u,b);})[0],mr=Math.max.apply(null,u.techs.filter(function(id){var tt=R.tech(id);return !tt.grey&&u.level>=(tt.unlock||1);}).map(function(id){return R.tech(id).range;}));tip="Only Grey reaches "+near2.name+" ("+H.dist(u,near2)+" tiles away). Your coloured attacks need range "+mr+": step "+(H.dist(u,near2)-mr)+" closer to use them, or hit with Grey now.";}
       if(!v.stage&&!v.preview)info+='<div class="tip">'+tip+'</div>';
-      u.techs.forEach(function(id,i){var t=R.tech(id),locked=u.level<(t.unlock||1),noChi=!R.canUse(u,t)&&!locked;
-        acts+='<button data-tech="'+id+'" class="'+(v.tech===id?"sel ":"")+((v.newTech&&v.newTech[u.id+":"+id])?"newbtn ":"")+(locked||noChi||u.acted?"dim":"")+'" title="'+esc(t.text||"")+'">'+(i+1)+'. '+esc(t.name)+'<br><small>'+
-          (locked?'Unlocks at level '+t.unlock:(R.cost(u,t)?R.cost(u,t)+(t.chi==="s"?' chi 2':' chi'):'free')+' · dmg '+R.basePower(u,t)+' · rng '+t.range+(R.selfCost(u,t)?' · -'+R.selfCost(u,t)+' HP':''))+'</small></button>';});
+      var foes=R.alive(st,'B').slice().sort(function(a,b){return H.dist(u,a)-H.dist(u,b);}),near=foes[0];
+      u.techs.forEach(function(id,i){var t=R.tech(id),locked=u.level<(t.unlock||1),noChi=!R.canUse(u,t)&&!locked,pw=R.basePower(u,t),net=near?R.damageOf(u,near,t):pw,far=near&&H.dist(u,near)>t.range;
+        acts+='<button data-tech="'+id+'" class="'+(v.tech===id?"sel ":"")+((v.newTech&&v.newTech[u.id+":"+id])?"newbtn ":"")+(locked||noChi||u.acted?"dim":"")+'" title="'+esc((t.text||"")+(near?" Hits "+near.name+" for about "+net+" after its DEF.":""))+'">'+(i+1)+'. '+esc(t.name)+'<br><small>'+
+          (locked?'Unlocks at level '+t.unlock:(R.cost(u,t)?R.cost(u,t)+(t.chi==="s"?' chi 2':' chi'):'free')+' · dmg '+pw+(near&&net!==pw?' \u2192 '+net:'')+' · rng '+t.range+(far?' (too far)':'')+(R.selfCost(u,t)?' · -'+R.selfCost(u,t)+' HP':''))+'</small></button>';});
       acts+='<button data-act="claim" class="'+(R.canClaim(st,u).ok?"":"dim")+'">Claim<br><small>-'+R.claimCost(u)+' HP</small></button>'+
             '<button data-act="open" class="'+(R.canOpen(st,u).ok?"":"dim")+'">Open<br><small>chest</small></button>'+
             '<button data-act="talk" class="'+(R.canTalk(st,u).ok?"":"dim")+'">Talk<br><small>'+(st.std?'free':'NPC')+'</small></button>'+
@@ -3322,7 +3357,7 @@ SE.ui={
     return '<g pointer-events="none" opacity="'+(off?0.35:0.95)+'"><path d="M'+x+','+(y-9)+' C'+(x+6)+','+(y-3)+' '+(x+6)+','+(y+3)+' '+x+','+(y+7)+' C'+(x-6)+','+(y+3)+' '+(x-6)+','+(y-3)+' '+x+','+(y-9)+'Z" fill="'+col+'" stroke="#10121c" stroke-width="1"/>'+
       (un.barrierMax?'<text x="'+x+'" y="'+(y+3.5)+'" text-anchor="middle" font-size="9" font-weight="800" fill="#10121c">'+un.barrier+'</text>':'')+'</g>';},
   barrierLine:function(st,u){if(!st.exp||!R.expOn(st,"barrier"))return '';var B=SE.data.expert.barrier;
-    if(u.barrierMax)return '<span class="note">Blue barrier flame: '+u.barrier+'/'+u.barrierMax+' charges. A charge weakens a Chaos pierce hit by '+B.star_warriors.pierceCut+' DEF or a hazard effect by '+B.star_warriors.hazardCut+'. Raise it again for '+B.star_warriors.raiseChi+' chi (free action).</span>';
+    if(u.barrierMax)return '<span class="note">Blue barrier flame: +'+B.star_warriors.hp+' max HP and '+u.barrier+'/'+u.barrierMax+' charges. A charge weakens a Chaos pierce hit by '+B.star_warriors.pierceCut+' DEF or a hazard effect by '+B.star_warriors.hazardCut+'. Raise it again for '+B.star_warriors.raiseChi+' chi (free action).</span>';
     if(u.selfCut||u.faction==="chaos_warriors")return '<span class="note">Red barrier flame: +'+B.chaos_warriors.hp+' max HP, techniques cost '+B.chaos_warriors.selfHpCut+' less HP.</span>';
     if(u.reflect)return '<span class="note">Silver barrier flame: reflects '+Math.round(u.reflect*100)+'% of technique damage taken (never defeats) and takes '+B.cultists.defVs.chaos_warriors+' less damage from Chaos Warriors.</span>';return '';},
   edgeLine:function(st,u){
@@ -3408,6 +3443,7 @@ SE.ui={
   tryAttack:function(v,u,t){
     var st=v.st,list=u.techs.filter(function(id){return R.targets(st,u,id).indexOf(t)>=0;}),id=list.indexOf(v.tech)>=0?v.tech:SE.ui.strongest(u,list);
     if(!id){toast(u.acted?"This unit has already acted.":"Out of range, locked, or not enough chi.");return;}
+    if(v.tech&&list.indexOf(v.tech)<0&&!R.tech(v.tech).grey&&u.level>=(R.tech(v.tech).unlock||1)&&id!==v.tech)toast(R.tech(v.tech).name+" has range "+R.tech(v.tech).range+" and "+t.name+" is "+H.dist(u,t)+" tiles away, so "+R.tech(id).name+" is used. Move closer to use "+R.tech(v.tech).name+".");
     if(SE.store.settings().confirmAttacks){
       if(v.preview&&v.preview.tid===t.id&&v.preview.uid===u.id){SE.ui.doAttack(v,u,t,v.preview.tech);return;}   // second tap confirms
       v.preview={uid:u.id,tid:t.id,tech:id,list:list};SE.ui.render(v);return;
@@ -3578,31 +3614,31 @@ M.custom=function(){
   screen('<h2>Custom Match</h2><div class="form">'+
    '<div class="row"><b>Rules</b><span><select id="c-rules" aria-label="Rules"><option value="basic">Basic</option><option value="standard"'+(SE.store.stdUnlocked()?'':' disabled')+'>Standard'+(SE.store.stdUnlocked()?'':' (finish '+SD.unlock.basicGames+' Basic matches: '+Math.min(SD.unlock.basicGames,SE.store.progress().basic)+'/'+SD.unlock.basicGames+')')+'</option><option value="expert"'+(SE.store.expUnlocked()?'':' disabled')+'>Expert'+(SE.store.expUnlocked()?'':' (finish '+SE.data.expert.unlock.standardGames+' Standard matches: '+Math.min(SE.data.expert.unlock.standardGames,SE.store.progress().standard)+'/'+SE.data.expert.unlock.standardGames+')')+'</option></select></span></div>'+
    '<p class="note" style="margin:0" id="c-rnote"></p>'+
-   '<div id="c-exprow"><div class="row"><label><input type="checkbox" id="c-xh"> Cultist hazards</label></div><div class="row"><label><input type="checkbox" id="c-xt"> Speed Traps and Reversals (all factions)</label></div><div class="row"><label><input type="checkbox" id="c-xg"> Angry god (talk to it or the leader is smitten)</label></div><div class="row"><label><input type="checkbox" id="c-xb"> Faction barriers (flames)</label></div><div class="row"><label><input type="checkbox" id="c-xp"> Group attacks (twice per game)</label></div><div class="row"><label><input type="checkbox" id="c-xr"> Weaker returns (80%, 70%, then 50% HP)</label></div><div class="row"><label><input type="checkbox" id="c-xe"> Weaker healing (-'+SE.data.expert.healNerf+')</label></div><div class="row"><label for="c-xl">Lives per unit</label><span><select id="c-xl">'+SE.data.expert.lives.map(function(n){return '<option value="'+n+'">'+(n?n+' lives':'Off (units keep returning)')+'</option>';}).join('')+'</select></span></div></div>'+
+   '<div id="c-exprow"><div class="row"><label><input type="checkbox" id="c-xh"> Cultist hazards</label></div><div class="row"><label><input type="checkbox" id="c-xt"> Speed Traps and Reversals (all factions)</label></div><div class="row"><label><input type="checkbox" id="c-xg"> Angry god (talk to it or the leader is smitten)</label></div><div class="row"><label><input type="checkbox" id="c-xb"> Faction barriers (flames)</label></div><div class="row"><label><input type="checkbox" id="c-xp"> Group attacks (twice per game)</label></div><div class="row"><label><input type="checkbox" id="c-xm"> Bigger random map (11 x 9, mirrored land)</label></div><div class="row"><label><input type="checkbox" id="c-xe"> Weaker healing (-'+SE.data.expert.healNerf+')</label></div><div class="row"><label for="c-xl">Lives per unit</label><span><select id="c-xl">'+SE.data.expert.lives.map(function(n){return '<option value="'+n+'">'+(n?n+' lives':'Off (units keep returning)')+'</option>';}).join('')+'</select></span></div></div>'+
    '<div class="row"><label for="c-fmt">Format</label><span><select id="c-fmt"><option value="1">Single match</option><option value="3">Best of 3 matches</option></select></span></div>'+
    '<div class="row" id="c-deckrow"><label for="c-deck">Magic deck</label><span><select id="c-deck"><option value="standard">Standard 12-card list</option><option value="random">Random 12 from every card</option></select></span></div>'+
    '<div class="row"><label><input type="checkbox" id="c-pt"> Star point goal</label><span id="c-ptl"></span><input type="range" id="c-ptv" min="'+L.pointMin+'" max="'+L.pointMax+'" step="10"></div>'+
    '<div class="row"><label><input type="checkbox" id="c-cl"> Match clock (minutes)</label><span id="c-cll"></span><input type="range" id="c-clv" min="'+L.clockMin+'" max="'+L.clockMax+'" step="1"></div>'+
    '<div class="row"><label><input type="checkbox" id="c-rd"> Round limit</label><span id="c-rdl"></span><input type="range" id="c-rdv" min="'+L.roundMin+'" max="'+L.roundMax+'" step="1"></div>'+
    '<p class="note" style="margin:0">Use one limit or several. The first to trigger ends the match; on a clock or round limit the higher score wins.</p>'+
-   '<div class="row"><label><input type="checkbox" id="c-rs"> Defeated units return at base (half HP)</label></div>'+
+   '<div class="row"><label><input type="checkbox" id="c-rs"> Defeated units return at base (full HP)</label></div>'+
    '<div class="row"><label><input type="checkbox" id="c-hints"> On-screen hints</label></div>'+
    '</div><div class="menu"><button class="primary" id="c-go">Start match</button><button id="c-back">Back</button></div>');
   function setv(id,val,isChk){var e=$("#"+id);if(isChk)e.checked=!!val;else e.value=val;}
-  $("#c-rules").value=(o.rules==="expert"&&SE.store.expUnlocked())?"expert":(o.rules==="standard"&&SE.store.stdUnlocked())?"standard":"basic";var xo=o.xp||{hazards:true,god:true,heal:true,lives:0};setv("c-xh",xo.hazards,1);setv("c-xg",xo.god,1);setv("c-xt",xo.traps!==false,1);setv("c-xe",xo.heal,1);setv("c-xb",xo.barrier!==false,1);setv("c-xp",xo.group!==false,1);setv("c-xr",xo.revive!==false,1);setv("c-xl",xo.lives||0);$("#c-deck").value=o.deck||"standard";$("#c-fmt").value=String(o.fmt||1);
+  $("#c-rules").value=(o.rules==="expert"&&SE.store.expUnlocked())?"expert":(o.rules==="standard"&&SE.store.stdUnlocked())?"standard":"basic";var xo=o.xp||{hazards:true,god:true,heal:true,lives:0};setv("c-xh",xo.hazards,1);setv("c-xg",xo.god,1);setv("c-xt",xo.traps!==false,1);setv("c-xe",xo.heal,1);setv("c-xb",xo.barrier!==false,1);setv("c-xp",xo.group!==false,1);setv("c-xm",xo.map!==false,1);setv("c-xl",xo.lives||0);$("#c-deck").value=o.deck||"standard";$("#c-fmt").value=String(o.fmt||1);
   function rnote(){var rv=$("#c-rules").value,std=rv==="standard"||rv==="expert";$("#c-deckrow").style.display=std?"":"none";$("#c-exprow").style.display=rv==="expert"?"":"none";
-    $("#c-rnote").textContent=rv==="expert"?"Expert: Standard plus the Cultists' hidden hazards, Speed Traps and Reversals for everyone, faction barrier flames, group attacks, an angry god, weaker healing and optional lives. Turn each on or off below. All numbers are placeholders.":std?"Standard: Basic plus magic cards, karma and Soul Purge, a free-to-talk Wandering God, and speed as movement range. Cards and tweaks are placeholders.":"Basic: unit attacks, movement, land, chests and the old hermit. No magic cards.";}
+    $("#c-rnote").textContent=rv==="expert"?"Expert: Standard plus the Cultists' hidden hazards, Speed Traps and Reversals for everyone, faction barrier flames, group attacks, an angry god, weaker healing, optional lives and a bigger random map. Turn each on or off below. All numbers are placeholders.":std?"Standard: Basic plus magic cards, karma and Soul Purge, a free-to-talk Wandering God, and speed as movement range. Cards and tweaks are placeholders.":"Basic: unit attacks, movement, land, chests and the old hermit. No magic cards.";}
   $("#c-rules").addEventListener("change",function(){var rv=$("#c-rules").value,D=rv==="expert"?SE.data.expert.defaults:rv==="standard"?SD.defaults:d;$("#c-ptv").value=D.pointLimit;$("#c-clv").value=D.clockMin;$("#c-rdv").value=D.roundLimit;lab();rnote();});
   rnote();
   setv("c-pt",o.pt,1);setv("c-ptv",o.ptv);setv("c-cl",o.cl,1);setv("c-clv",o.clv);setv("c-rd",o.rd,1);setv("c-rdv",o.rdv);setv("c-rs",o.rs,1);setv("c-hints",o.hints,1);
   function lab(){$("#c-ptl").textContent=$("#c-ptv").value;$("#c-cll").textContent=$("#c-clv").value;$("#c-rdl").textContent=$("#c-rdv").value;
     [["pt"],["cl"],["rd"]].forEach(function(k){$("#c-"+k[0]+"v").disabled=!$("#c-"+k[0]).checked;});}
   ["c-pt","c-ptv","c-cl","c-clv","c-rd","c-rdv"].forEach(function(id){$("#"+id).addEventListener("input",lab);});lab();
-  function read(){return {fmt:+$("#c-fmt").value,rules:$("#c-rules").value,deck:$("#c-deck").value,pt:$("#c-pt").checked,ptv:+$("#c-ptv").value,cl:$("#c-cl").checked,clv:+$("#c-clv").value,rd:$("#c-rd").checked,rdv:+$("#c-rdv").value,rs:$("#c-rs").checked,hints:$("#c-hints").checked,xp:{hazards:$("#c-xh").checked,traps:$("#c-xt").checked,god:$("#c-xg").checked,heal:$("#c-xe").checked,barrier:$("#c-xb").checked,group:$("#c-xp").checked,revive:$("#c-xr").checked,lives:+$("#c-xl").value}};}
+  function read(){return {fmt:+$("#c-fmt").value,rules:$("#c-rules").value,deck:$("#c-deck").value,pt:$("#c-pt").checked,ptv:+$("#c-ptv").value,cl:$("#c-cl").checked,clv:+$("#c-clv").value,rd:$("#c-rd").checked,rdv:+$("#c-rdv").value,rs:$("#c-rs").checked,hints:$("#c-hints").checked,xp:{hazards:$("#c-xh").checked,traps:$("#c-xt").checked,god:$("#c-xg").checked,heal:$("#c-xe").checked,barrier:$("#c-xb").checked,group:$("#c-xp").checked,map:$("#c-xm").checked,lives:+$("#c-xl").value}};}
   on("#c-go",function(){
     var v=read();if(!v.pt&&!v.cl&&!v.rd){v.pt=true;SE.toast("No limit picked: using the star point goal.");}
     flow.custom=v;
-    var opts=M.baseOpts();opts.pointLimit=v.pt?v.ptv:100000;opts.clockMin=v.cl?v.clv:0;opts.roundLimit=v.rd?v.rdv:0;opts.respawn=v.rs;opts.hints=v.hints;opts.rules=v.rules;opts.deck=v.deck;if(v.rules==="expert"){opts.expert={hazards:v.xp.hazards,traps:v.xp.traps,god:v.xp.god,heal:v.xp.heal,barrier:v.xp.barrier,group:v.xp.group,revive:v.xp.revive};opts.lives=v.xp.lives;}opts.series=v.fmt>1?v.fmt:0;flow.series=opts.series?{n:opts.series,need:Math.ceil(opts.series/2),max:opts.series+2,g:0,w:{A:0,B:0}}:null;
+    var opts=M.baseOpts();opts.pointLimit=v.pt?v.ptv:100000;opts.clockMin=v.cl?v.clv:0;opts.roundLimit=v.rd?v.rdv:0;opts.respawn=v.rs;opts.hints=v.hints;opts.rules=v.rules;opts.deck=v.deck;if(v.rules==="expert"){opts.expert={hazards:v.xp.hazards,traps:v.xp.traps,god:v.xp.god,heal:v.xp.heal,barrier:v.xp.barrier,group:v.xp.group,map:v.xp.map};opts.lives=v.xp.lives;}opts.series=v.fmt>1?v.fmt:0;flow.series=opts.series?{n:opts.series,need:Math.ceil(opts.series/2),max:opts.series+2,g:0,w:{A:0,B:0}}:null;
     M.beforeMatch(opts);});
   on("#c-back",function(){flow.custom=read();M.modePick();});
 };
