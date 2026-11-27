@@ -92,3 +92,6 @@ On phones the top bar shows only the two factions with scores, Goal and Round; t
 
 ## Collapsible bottom panel
 The arrow button at the left of the bottom bar collapses the whole panel to the arrow, a short unit label and End turn (saved in the panelCollapsed setting). The attack preview (confirm), card target picking, guided turns and the end screen expand it automatically. In landscape the collapsed panel becomes a narrow right-hand strip, so the map gets the full width. Landscape also now fits the whole board on screen (the bottom rows were cut off before).
+
+## Map first (phones)
+Defaults: top info is a thin overlay on the map (Options > Layout: bar instead), the bottom panel is collapsed and does not open by itself (it still opens for guided turns), and everything that used the panel shows as a chip on the map: Attack / Cancel for the attack preview, Cancel while picking a card target, Move / Cancel for movement, and hints with OK. Pinch to zoom, drag to pan, Fit button to reset (mouse wheel zooms on desktop); the zoom window uses the spare screen height in portrait. Movement now needs a confirm: tap the tile, then tap it again or press Move (Options: Confirm moves; guided turns skip the confirm). Settings: topMode, panelCollapsed (null = auto), zoom, confirmMove.
