@@ -83,3 +83,12 @@ In Standard mode (engine "expert") the god is The Magician, shown with her card 
 
 ## Visit request
 Any mode: the Visit button (free, no action) asks The Magician to come next to your closest unit. Once every 2 rounds per side. If the other side already asked this round, it is a coin flip (a lost flip does not use the cooldown). She still wanders after talks. The CPU asks when all its units are more than 2 tiles away and she is open to talking. Rules are in js/modes.js (R.canVisit, R.visit).
+
+## Phone layout
+Under 900px wide the panel is compact: a one-line unit summary and a bottom bar with Action / Talk / Cards / Group / Info and End turn. Tapping a tab opens that section above the bar; picking an attack, card or action closes it. Selecting a unit opens Action. Landscape phones put the map on the left and the panel on the right. Desktop keeps the full panel. Code: panelHtml and render in js/ui.js (sections have data-s, the bar has data-dock), CSS at the end of style.css.
+
+## Minimal phone UI
+On phones the top bar shows only the two factions with scores, Goal and Round; the ... button reveals the clock, turn, god meter and Menu. Technique buttons show name and cost only (Options > Button descriptions: Auto / Short / Full; Auto is Full on desktop). Picking an attack shows a tag on the closest visible enemy: average damage (minus the target's DEF), "KO" if it would defeat them, or "N too far" (Options > Attack tags). The long tip is behind the ? button.
+
+## Collapsible bottom panel
+The arrow button at the left of the bottom bar collapses the whole panel to the arrow, a short unit label and End turn (saved in the panelCollapsed setting). The attack preview (confirm), card target picking, guided turns and the end screen expand it automatically. In landscape the collapsed panel becomes a narrow right-hand strip, so the map gets the full width. Landscape also now fits the whole board on screen (the bottom rows were cut off before).
