@@ -107,3 +107,9 @@ The attack preview chip has a row of the unit's usable techniques; tap one to sw
 
 ## Enemy info strip
 `mapInfo: "strip"` hides unit data on the map and shows a collapsible list of enemies (name, level, HP, chi) above the board, closest to your selected unit first; tap a row to select/attack that enemy. The strip's open/closed state is saved (`stripOpen`). Choose the mode in Options or the Info tab of the bottom panel (Auto / Tap-hover / Strip / Always). The strip floats at the top-left of the map in landscape too (not yet moved into the side panel).
+
+## Tutorial and guides for phones
+Tutorial cards now include "The phone screen" (top bar, chip, bottom bar tabs, pinch zoom) and "Reading the map" (data on tap, enemy strip). Move, Attack, Claim, Chest, Talk, hazard, trap and Group texts describe the unit chip and the Special menu. Hints, the guided lesson and the guided turns use the same wording. The guide's last tab is now "Controls": a Touch table plus the keyboard keys.
+
+## Strip placement and tap info
+With the strip on, it sits at the top of the side panel in landscape and on desktop (when the panel is open). In portrait, or when the landscape panel is collapsed (too narrow), it floats over the map. While the strip is on, tapping or hovering enemies and NPCs no longer pops their info; turn `stripTap` on (Options) to get both.
