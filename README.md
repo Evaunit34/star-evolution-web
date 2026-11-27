@@ -104,3 +104,6 @@ Unit data on the map (HP bar, level, barrier flame) can show only for the select
 
 ## Attack chip
 The attack preview chip has a row of the unit's usable techniques; tap one to switch the preview.
+
+## Enemy info strip
+`mapInfo: "strip"` hides unit data on the map and shows a collapsible list of enemies (name, level, HP, chi) above the board, closest to your selected unit first; tap a row to select/attack that enemy. The strip's open/closed state is saved (`stripOpen`). Choose the mode in Options or the Info tab of the bottom panel (Auto / Tap-hover / Strip / Always). The strip floats at the top-left of the map in landscape too (not yet moved into the side panel).
