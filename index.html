@@ -141,7 +141,8 @@ ul.rl{text-align:left;margin:.2rem 0;padding-left:1.1rem;display:flex;flex-direc
 .pbody{display:contents}.phandle{display:none}
 @media (max-width:899px){.phandle{display:flex;gap:.4rem;justify-content:space-between;align-items:center;padding:.25rem 10px;background:var(--panel);border-top:1px solid var(--line)}.phandle .primary{flex:1}.side.col .pbody{display:none}.side.col{overflow:visible}}
 /* brand art: title stage, blurred menu background */
-body.menubg{background:linear-gradient(rgba(0,0,0,.35),rgba(0,0,0,.5)),var(--menubg,none) center/cover no-repeat fixed,#050507}
+/* placeholder menu background (plain gradient) until real art is chosen */
+body.menubg{background:radial-gradient(ellipse at 50% 30%,#1b2040 0%,#0c0e1c 55%,#050507 100%) fixed,#050507}
 body.title{background:#010102}
 .stage{position:relative;width:min(100%,460px,calc(46dvh*813/820));aspect-ratio:813/820;flex-shrink:0;-webkit-mask-image:linear-gradient(#000 82%,transparent);mask-image:linear-gradient(#000 82%,transparent)}
 .stage .stbg{width:100%;height:100%;display:block}
@@ -839,7 +840,7 @@ SE.data.map={
   water:[[4,0],[4,6],[1,5],[7,0]],
   land:[[2,1],[6,5],[2,5],[6,1],[3,3],[5,2],[4,1],[4,5]],
   chests:[{at:[1,1],level:1},{at:[7,4],level:1},{at:[3,5],level:1},{at:[5,0],level:1}],
-  npc:{at:[4,3],name:"Old Hermit"},
+  npc:{at:[4,3],name:"The Magician"},
   bosses:[[3,1],[5,4]]
 };
 })(typeof window!=='undefined'?window:globalThis);
@@ -890,7 +891,7 @@ SE.data.standard={
   unlock:{basicGames:5},                 // Intro matches finished to unlock Basic (testers can switch this off in Options)
   karma:{pointsPer:3,penaltyPer:20,penalty:10},   // 3 star points earned = 1 karma (your design says 5; 3 makes karma show up in a 100-point game, change it back here). Every full 20 karma costs 10 points. Card points and purge points make no karma.
   purge:{minLevel:3,minKarma:20,karma:20,points:15,chiLoss:3,cooldown:2,contests:2,contestChiLoss:3},  // commander only, one action; chiLoss = secondary chi each of your units loses
-  god:{name:"Wandering God",points:5,talksPerSide:3,radius:3},  // talking is free (no action), one per turn; the god wanders to a new tile after each talk
+  god:{name:"The Magician",points:5,talksPerSide:3,radius:3},  // talking is free (no action), one per turn; the god wanders to a new tile after each talk
   cards:{startHand:3,draw:1,handMax:6,playPerTurn:2,returnPerTurn:1,scorePerCard:1,aoeShape:"block2"},   // damage cards hit a 2x2 block (the tapped tile plus its east-south-east, south and the tile beyond)
   // 12-card deck, rank counts 3/2/2/2/3. Tokens chi_drink / chi_barrel become the faction's colour. (Easy Scanner waits for hidden traps in Standard.)
   deck:["bonus_action","healing","healing","greater_soul_purge_1","chi_drink","greater_soul_purge_2","greater_healing","chi_barrel","increased_potency","negate","critical_speed","sanctified_healing"],
@@ -3216,7 +3217,7 @@ T.cards=function(ctx){
   function tdesc(id){var t=R.tech(id);return {t:t,dmg:R.basePower(dummy,t)};}
   var techs=dd.techs.map(tdesc);
   // 1 welcome
-  cards.push({title:"Welcome to Star Evolution",text:"Two sides, one small map. Take land, open chests, talk to the Hermit and beat the Wardens to earn star points. First side to "+goal+" star points wins.",
+  cards.push({title:"Welcome to Star Evolution",text:"Two sides, one small map. Take land, open chests, talk to The Magician and beat the Wardens to earn star points. First side to "+goal+" star points wins.",
     svg:svg([0,1,2].map(function(i){return A.unit(50+i*38,50+(i%2)*14,14,tok(F,String.fromCharCode(65+i)));}).join("")+[0,1,2].map(function(i){return A.unit(190+i*38,50+(i%2)*14,14,tok(O,String.fromCharCode(88+i)));}).join("")+lbl(160,62,"vs",{s:14,b:1})+star(160,118,18)+lbl(160,146,goal+" to win",{s:11,b:1,c:"#e8b84a"}))});
   // 2 units
   cards.push({title:"Your units",text:"You control 3 units. The letter names the unit, the shape and colour show the side. The green bar is HP, L is the level. Each unit gets one move and one action every turn.",
@@ -3224,7 +3225,7 @@ T.cards=function(ctx){
       lbl(176,33,"Letter = unit, shape = side",{a:"start"})+lbl(176,67,"L2 = level (max 5)",{a:"start"})+lbl(176,103,"Green bar = HP",{a:"start"})+lbl(80,125,dd.name,{b:1,c:"#eceaf6"}))});
   // 3 move
   var m0=pz(0),m1=pz(1),m2=pz(2),m3=pz(3),m4=pz(4),m5=pz(5);
-  cards.push({title:"Move",text:"Tap one of your units, then tap a glowing tile. Moving is optional and happens once per turn, before you act. You can't walk through units, water or the Hermit.",
+  cards.push({title:"Move",text:"Tap one of your units, then tap a glowing tile. Moving is optional and happens once per turn, before you act. You can't walk through units, water or The Magician.",
     svg:svg([m0,m1,m2,m3,m4,m5].map(function(p,i){return A.hex(p.x,p.y,20,{stroke:i>0&&i<4?"#7c8cff":"#3a4166",sw:i>0&&i<4?3:1.5});}).join("")+A.water(pz(5).x,pz(5).y,20)+'<g>'+A.unit(m0.x,m0.y,13,tok(F,U.letter,{level:1,hp:1}))+A.move(m3.x-m0.x,m3.y-m0.y,3)+'</g>'+lbl(160,140,"Glowing tiles = where this unit can go",{c:"#aab"}))});
   // 4 attack
   var b=function(i,x){var d=techs[i];if(!d)return "";var t=d.t,locked=(t.unlock||1)>1;return A.btn(x,10,98,44,(i+1)+". "+esc(t.name),locked?"Unlocks at level "+t.unlock:(t.cost?t.cost+" chi":"free")+" · dmg "+d.dmg+" · rng "+t.range+(t.selfHp?" · -"+t.selfHp+" HP":""),{dim:locked,sel:i===0});};
@@ -3247,7 +3248,7 @@ T.cards=function(ctx){
   cards.push({title:"Chests",text:"Move onto a chest tile and press Open. A chest gives star points equal to its level (the number on it) and levels the unit up. Chests start at level 1 and grow richer as the match goes on, up to level 5. They are shared, so the first to reach one gets it.",
     svg:svg(A.hex(m0.x+30,m0.y,20)+A.hex(m1.x+30,m1.y,20)+A.chest(m1.x+30,m1.y)+'<g>'+A.unit(m0.x+30,m0.y,13,tok(F,U.letter,{level:1,hp:1}))+A.move(m1.x-m0.x,m1.y-m0.y,3)+'</g><g><text x="'+(m1.x+30)+'" y="'+(m1.y-30)+'" text-anchor="middle" font-size="14" font-weight="800" fill="#e8b84a">+1 ★  +1 level</text>'+A.pop(3)+'</g>'+A.btn(190,100,80,36,"Open","chest"))});
   // 7 hermit
-  cards.push({title:"Talk to the Hermit",text:"The Old Hermit stands in the middle of the map. Stand next to him and press Talk for "+P.npcTalk+" star points. Each side can talk to him once. Nobody can hurt him, so he is a free reward for whoever walks over first.",
+  cards.push({title:"Talk to The Magician",text:"The Magician stands in the middle of the map. Stand next to her and press Talk for "+P.npcTalk+" star points. Each side can talk to her once. Nobody can hurt her in this mode, so she is a free reward for whoever walks over first.",
     svg:svg(A.hex(160,70,34,{fill:"#2a2f4a"})+A.npc(160,70,18)+A.unit(127,89,13,tok(F,U.letter,{hp:1}))+'<g><text x="160" y="22" text-anchor="middle" font-size="16" font-weight="800" fill="#e8b84a">+'+P.npcTalk+' ★</text>'+A.pop(3)+'</g>'+A.btn(216,96,80,38,"Talk","NPC",{sel:true})+lbl(70,130,"stand next to him",{s:9}))});
   // 8 warden
   cards.push({title:"Wardens",text:"Wardens are neutral bosses. At the end of every round each Warden hits every unit next to it, so don't linger. Defeat one for "+P.miniBossMult+" x its level in star points and a free level.",
@@ -3279,7 +3280,7 @@ T.cardsStd=function(ctx){
     svg:svg(hx(oth)+hx(far)+[c0,c1,c2,c3].map(function(c){return hx(c,{fill:"#6a2a2a",stroke:"#ff8a5c",sw:2.5});}).join("")+A.unit(c0.x,c0.y,10,tok(O,"E",{hp:1}))+A.unit(c3.x,c3.y,10,tok(O,"E",{hp:0.6}))+A.unit(oth.x,oth.y,10,tok(F,"A",{hp:1}))+
       lbl(190,52,"Red = the 2x2 area",{a:"start",s:11,c:"#ff8a5c",b:1})+lbl(190,72,"Tap twice to cast",{a:"start",s:10})+lbl(190,92,"Meteor hurts both sides",{a:"start",s:10,c:"#9aa0bd"}))});
   var g=hp(0,0,20,170,70);
-  cards.push({title:"The Wandering God",text:"A god wanders the map. Stand next to it and press Talk: talking is free (it does not use your action), scores "+K.god.points+" points, and you can do it "+K.god.talksPerSide+" times per side. After each talk the god wanders to a new spot.",
+  cards.push({title:"The Magician",text:"The Magician wanders the map. Stand next to her and press Talk: talking is free (it does not use your action), scores "+K.god.points+" points, and you can do it "+K.god.talksPerSide+" times per side. After each talk she wanders to a new spot.",
     svg:svg(A.hex(g.x,g.y,20)+A.npc(g.x,g.y,12)+'<circle cx="'+g.x+'" cy="'+g.y+'" r="50" fill="none" stroke="#7c8cff" stroke-dasharray="4 3"/>'+A.unit(g.x-52,g.y+10,13,tok(F,"A",{hp:1}))+A.btn(235,40,70,40,"Talk","free",{sel:true})+lbl(270,104,"+"+K.god.points+" points",{b:1,c:"#e8b84a"}))});
   var kp=SE.data.standard.karma;
   cards.push({title:"Karma",text:"Every "+kp.pointsPer+" star points you earn adds 1 karma (card and purge points do not). Every full "+kp.penaltyPer+" karma costs you "+kp.penalty+" points. The number is shown above your hand. Karma is the price of racing ahead.",
@@ -3342,7 +3343,7 @@ T.guide=function(ctx,onClose){
   d.innerHTML='<div class="modal wide guide" role="dialog" aria-label="Guide"><div class="tabs"><button data-tab="how" class="on">How to play</button><button data-tab="pts">Points</button><button data-tab="units">Units</button><button data-tab="std">Basic</button><button data-tab="exp">Standard</button><button data-tab="keys">Keys</button></div><div id="g-body"></div><button class="primary" id="g-close">Close guide</button></div>';
   G.document.body.appendChild(d);var body=d.querySelector("#g-body");
   function ptsHtml(){var P=SE.data.rules.points,g=SE.data.rules.grey;
-    return '<h2>Star points</h2><table class="keys"><tr><td>Capture land (each claim, steals too)</td><td>'+P.land+'</td></tr><tr><td>Defeat a unit</td><td>'+P.kill+'</td></tr><tr><td>Open a chest</td><td>its level</td></tr><tr><td>Defeat a Warden (mini boss)</td><td>'+P.miniBossMult+' x its level</td></tr><tr><td>Talk to the Hermit (once per side)</td><td>'+P.npcTalk+'</td></tr></table>'+
+    return '<h2>Star points</h2><table class="keys"><tr><td>Capture land (each claim, steals too)</td><td>'+P.land+'</td></tr><tr><td>Defeat a unit</td><td>'+P.kill+'</td></tr><tr><td>Open a chest</td><td>its level</td></tr><tr><td>Defeat a Warden (mini boss)</td><td>'+P.miniBossMult+' x its level</td></tr><tr><td>Talk to The Magician (once per side)</td><td>'+P.npcTalk+'</td></tr></table>'+
       '<h2>Good to know</h2><ul class="gl"><li>One move and one action per unit per turn. Move first, then act.</li><li>Claiming land costs 2 x level HP and is refused if it would defeat the unit.</li><li>Chi refills fully at the start of each of your turns.</li><li>Second attack unlocks at level 3 (+2 chi reserve). Grey attack: free, range '+g.range+', damage '+g.base+' +'+g.perLevel+' per level, max '+g.cap+'.</li><li>Defense (DEF) is subtracted from each hit (minimum 1).</li><li>Faction triangle: Star Warriors beat Chaos Warriors, Chaos Warriors beat Cultists, Cultists beat Star Warriors. +2 damage to the faction you beat, -2 to the faction that beats you (any attack).</li><li>Wardens hit everyone next to them at the end of each round.</li><li>In the full game the world level rises every turn and the world gets tougher. Not active in this test build yet.</li><li>Defeated units return at their start tile next turn with full HP (unless switched off in Custom Match).</li></ul>';}
   function unitsHtml(){var ids=[ctx&&ctx.faction,ctx&&ctx.opponent].filter(Boolean),seen={},out="";
     if(!ids.length)ids=Object.keys(SE.data.units.factions);
@@ -3372,7 +3373,7 @@ var R=SE.rules,C=SE.coach={};
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
 function stdSteps(){var K=SE.data.standard;return [
   {id:"cards",text:"Magic cards: your hand is under the board. Tap a card to read it, then Play it. Each card you play scores 1 point, and you can play "+K.cards.playPerTurn+" per turn.",btn:".hc",done:function(v,st){return st.std.cards.A>=1;}},
-  {id:"god",text:"The Wandering God roams the map (the ? marker). Walk a unit next to it and press Talk: it is free and worth "+K.god.points+" points. The god moves after each talk.",btn:'[data-act="talk"]',done:function(v,st){return st.std.godTalks.A>=1;}},
+  {id:"god",text:"The Magician roams the map. Walk a unit next to her and press Talk: it is free and worth "+K.god.points+" points. She moves after each talk.",btn:'[data-act="talk"]',done:function(v,st){return st.std.godTalks.A>=1;}},
   {id:"karma",text:"Karma: every "+K.karma.pointsPer+" points you score adds 1 karma, and every "+K.karma.penaltyPer+" karma costs you "+K.karma.penalty+" points. Watch it above your hand. A level "+K.purge.minLevel+" commander can Soul Purge to clean it.",ack:true}];}
 function expSteps(){var X=SE.data.expert;return [
   {id:"trap",text:"Traps: select a unit and press Trap (free, "+X.traps.chi+" primary chi) to hide a Speed Trap or a Reversal on a nearby tile. The CPU cannot see it.",btn:'[data-act="trap"]',skip:function(v,st){return !R.expOn(st,"traps");},done:function(v,st){return st.exp.trapN.A>=1;}},
@@ -3498,7 +3499,7 @@ ST.decorate=function(v){var i=ST.info(v);if(i.btn){var b=v.root.querySelector(i.
 ST.finish=function(v){
   v.overlay=true;
   var d=G.document.createElement("div");d.className="overlay";
-  d.innerHTML='<div class="modal" role="dialog" aria-label="Lesson done"><h2>That is the whole loop</h2><p class="ttext">Move, attack, claim, end turn. Real matches add chests, the Old Hermit and Wardens, and hints will point them out as you meet them.</p><button class="primary" id="s-go">'+v.st.opts.stageNext+'</button></div>';
+  d.innerHTML='<div class="modal" role="dialog" aria-label="Lesson done"><h2>That is the whole loop</h2><p class="ttext">Move, attack, claim, end turn. Real matches add chests, The Magician and the Wardens, and hints will point them out as you meet them.</p><button class="primary" id="s-go">'+v.st.opts.stageNext+'</button></div>';
   G.document.body.appendChild(d);var b=d.querySelector("#s-go");b.focus();
   b.addEventListener("click",function(){d.remove();SE.ui.stop(v);v.onExit("stagedone");});
 };
@@ -3539,10 +3540,10 @@ var HINTS={
   unlock:"Level up! A new attack is unlocked: check the buttons below.",
   claim:"Claim land: stand on a land tile and press Claim. It costs HP (2 x level) but earns 10 star points and a level.",
   chest:"Chests give star points and a level. Move onto a chest tile, then press Open.",
-  npc:"Stand next to the Old Hermit and press Talk. Each side can talk once for 5 star points. He can't be hurt.",
+  npc:"Stand next to The Magician and press Talk. Each side can talk once for 5 star points. She can't be hurt.",
   inrange:"An enemy is in range! Tap the enemy with the red ring to see what the attack will do, then confirm.",
   boss:"Wardens hit everyone next to them at the end of each round. Beat one for bonus points and a level.",
-  god:"The Wandering God: press Talk. In Basic it's free (it doesn't use your action), once per turn, for 5 star points. Then it wanders off.",
+  god:"The Magician: press Talk. In Basic it's free (it doesn't use your action), once per turn, for 5 star points. Then it wanders off.",
   cards:"Basic rules: your magic cards are under the board. Tap a card to see it and play it (2 per turn). Right-click or long-press a card to read its text."
 };
 function pts(h,rad){var p=H.pixel(h.q,h.r,S),a=[];for(var i=0;i<6;i++){var an=Math.PI/3*i;a.push((p.x+rad*Math.cos(an)).toFixed(1)+","+(p.y+rad*Math.sin(an)).toFixed(1));}return a.join(" ");}
@@ -3654,7 +3655,8 @@ SE.ui={
     legal.forEach(function(m){out+='<polygon class="glow" pointer-events="none" points="'+pts(m,S-2.5)+'" fill="rgba(124,140,255,.30)" stroke="#9aa6ff" stroke-width="3"/>';});
     // npc
     if(!st.npc.god){var np=H.pixel(st.npc.q,st.npc.r,S);
-    out+='<g data-tile="'+H.key(st.npc.q,st.npc.r)+'"><circle cx="'+np.x+'" cy="'+np.y+'" r="'+(S*0.5)+'" fill="#e9e4d0" stroke="#8a7f55" stroke-width="2"/><text x="'+np.x+'" y="'+(np.y+7)+'" text-anchor="middle" font-size="22" font-weight="700" fill="#4a4126">?</text></g>';}
+    var mh=SE.assets&&SE.assets.heads&&SE.assets.heads.magician;
+    out+='<g data-tile="'+H.key(st.npc.q,st.npc.r)+'" data-npc="1">'+(mh?'<clipPath id="cpnpc"><circle cx="'+np.x+'" cy="'+np.y+'" r="'+(S*0.5)+'"/></clipPath><circle cx="'+np.x+'" cy="'+np.y+'" r="'+(S*0.5)+'" fill="#1a1d2e"/><image href="'+mh+'" x="'+(np.x-S*0.5)+'" y="'+(np.y-S*0.5)+'" width="'+S+'" height="'+S+'" clip-path="url(#cpnpc)" preserveAspectRatio="xMidYMid slice"/><circle cx="'+np.x+'" cy="'+np.y+'" r="'+(S*0.5)+'" fill="none" stroke="#e8d9a0" stroke-width="3"/>':'<circle cx="'+np.x+'" cy="'+np.y+'" r="'+(S*0.5)+'" fill="#e9e4d0" stroke="#8a7f55" stroke-width="2"/><text x="'+np.x+'" y="'+(np.y+7)+'" text-anchor="middle" font-size="22" font-weight="700" fill="#4a4126">?</text>')+'</g>';}
     // units
     st.units.forEach(function(un){if(un.dead||(st.fog&&!R.visible(st,SE.ui.me(v),un)))return;
       var p=H.pixel(un.q,un.r,S),col=un.boss?"#c9443c":un.god?"#e8d9a0":"var(--side"+un.side+")",sel=v.sel===un.id,isT=!!tgt[un.id]||!!(stg&&stg.enemy===un.id)||!!(pk&&pk[un.id]);
@@ -3968,7 +3970,7 @@ var HERO='<svg class="hero" viewBox="0 0 320 170" role="img" aria-label="Star Ev
  '<circle cx="160" cy="85" r="80" fill="url(#g)" opacity=".45"/><polygon points="160,15 176,70 232,70 186,102 204,157 160,124 116,157 134,102 88,70 144,70" fill="#e8b84a" stroke="#fff3c9" stroke-width="3"/>'+
  '<polygon points="52,120 64,100 76,120 64,140" fill="#8a6bd6"/><circle cx="262" cy="118" r="12" fill="#e8b84a" stroke="#000" stroke-width="2"/></svg>';
 
-M.boot=function(el){root=el;SE.store.apply();var B=SE.brand||{},st=G.document.documentElement.style;if(B.field||(SE.assets&&SE.assets.map))st.setProperty('--mapbg','url("'+(B.field||SE.assets.map)+'")');var MB=(SE.assets&&SE.assets.map)||B.menu;if(MB)st.setProperty('--menubg','url("'+MB+'")');M.title();};
+M.boot=function(el){root=el;SE.store.apply();var B=SE.brand||{},st=G.document.documentElement.style;if(B.field||(SE.assets&&SE.assets.map))st.setProperty('--mapbg','url("'+(B.field||SE.assets.map)+'")');M.title();};
 M.title=function(){
   flow.series=null;
   screen((SE.brand&&SE.brand.cover?'<div class="stage"><img class="stbg" alt="" src="'+SE.brand.cover+'"><img class="sttitle" alt="Star Evolution" src="'+SE.brand.title+'"></div>':(SE.assets&&SE.assets.title?'<img class="cover" alt="Star Evolution title art" src="'+SE.assets.title+'">':HERO))+'<h1 class="logo sr">STAR EVOLUTION</h1><p class="sub">Take land. Take risks. Take the stars.</p>'+
@@ -4038,7 +4040,7 @@ M.custom=function(){
   function setv(id,val,isChk){var e=$("#"+id);if(isChk)e.checked=!!val;else e.value=val;}
   $("#c-rules").value=(o.rules==="expert"&&SE.store.expUnlocked())?"expert":(o.rules==="standard"&&SE.store.stdUnlocked())?"standard":"basic";var xo=o.xp||{hazards:true,god:true,heal:true,lives:0};setv("c-xh",xo.hazards,1);setv("c-xg",xo.god,1);setv("c-xt",xo.traps!==false,1);setv("c-xe",xo.heal,1);setv("c-xb",xo.barrier!==false,1);setv("c-xp",xo.group!==false,1);setv("c-xm",xo.map!==false,1);setv("c-xl",xo.lives||0);$("#c-deck").value=o.deck||"random";$("#c-build").value=o.build||"";if(!$("#c-build").value)$("#c-build").value="";$("#c-buildrow").style.display=(flow.faction&&flow.edit==null)?"":"none";$("#c-vs").value=o.vs||"cpu";$("#c-p2").value=o.p2||"";if($("#c-fac"))$("#c-fac").value=o.fac||"";$("#c-fmt").value=String(o.fmt||1);
   function rnote(){$("#c-p2row").style.display=$("#c-vs").value==="hot"?"":"none";var rv=$("#c-rules").value,std=rv==="standard"||rv==="expert";$("#c-deckrow").style.display=std?"":"none";$("#c-exprow").style.display=rv==="expert"?"":"none";$("#c-exrow").style.display=rv==="expert"?"":"none";
-    $("#c-rnote").textContent=rv==="expert"?"Standard: Basic plus the Cultists' hidden hazards, Speed Traps and Reversals for everyone, faction barrier flames, group attacks, an angry god, weaker healing, optional lives and a bigger random map. Turn each on or off below. All numbers are placeholders.":std?"Basic: Intro plus magic cards, karma and Soul Purge, a free-to-talk Wandering God, and speed as movement range. Cards and tweaks are placeholders.":"Intro: unit attacks, movement, land, chests and the old hermit. No magic cards.";}
+    $("#c-rnote").textContent=rv==="expert"?"Standard: Basic plus the Cultists' hidden hazards, Speed Traps and Reversals for everyone, faction barrier flames, group attacks, an angry god, weaker healing, optional lives and a bigger random map. Turn each on or off below. All numbers are placeholders.":std?"Basic: Intro plus magic cards, karma and Soul Purge, a free-to-talk Magician, and speed as movement range. Cards and tweaks are placeholders.":"Intro: unit attacks, movement, land, chests and the old hermit. No magic cards.";}
   $("#c-rules").addEventListener("change",function(){var rv=$("#c-rules").value,D=rv==="expert"?SE.data.expert.defaults:rv==="standard"?SD.defaults:d;$("#c-ptv").value=D.pointLimit;$("#c-clv").value=D.clockMin;$("#c-rdv").value=D.roundLimit;lab();rnote();});
   $("#c-vs").addEventListener("change",rnote);
   rnote();
@@ -4183,7 +4185,7 @@ M.tutorials=function(back){
   screen('<h2>Tutorials</h2><p class="note" style="margin:0">Pick one to play again. They never lock anything; you can skip a guided turn at any time.</p><div class="cards">'+
    '<div class="card"><h3>Intro: how to play</h3><p class="note">The picture cards: moving, attacking, claiming land, chests, the hermit and star points.</p><div class="prow"><button class="primary" id="tu-intro">Watch</button></div></div>'+
    '<div class="card"><h3>Intro: guided turn</h3><p class="note">One scripted turn that walks you through move, attack, claim and end turn.</p><div class="prow"><button class="primary" id="tu-stage">Play</button></div></div>'+
-   '<div class="card"><h3>Basic: guided first turns</h3><p class="note">A real match with a banner: magic cards, the Wandering God and karma.</p><div class="prow"><button class="primary" id="tu-std">Play</button></div></div>'+
+   '<div class="card"><h3>Basic: guided first turns</h3><p class="note">A real match with a banner: magic cards, The Magician and karma.</p><div class="prow"><button class="primary" id="tu-std">Play</button></div></div>'+
    '<div class="card"><h3>Standard: guided first turns</h3><p class="note">A real match with a banner: traps, hazards, the angry god, group attacks and barriers.</p><div class="prow"><button class="primary" id="tu-exp">Play</button></div></div>'+
    '</div><div class="menu"><button id="tu-reset">Show every tutorial again before my next matches</button><button class="primary" id="tu-back">Back</button></div>');
   on("#tu-intro",function(){SE.tutorial.run({faction:fac},{startLabel:"Done",showSkip:false});});
