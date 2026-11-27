@@ -3968,7 +3968,7 @@ var HERO='<svg class="hero" viewBox="0 0 320 170" role="img" aria-label="Star Ev
  '<circle cx="160" cy="85" r="80" fill="url(#g)" opacity=".45"/><polygon points="160,15 176,70 232,70 186,102 204,157 160,124 116,157 134,102 88,70 144,70" fill="#e8b84a" stroke="#fff3c9" stroke-width="3"/>'+
  '<polygon points="52,120 64,100 76,120 64,140" fill="#8a6bd6"/><circle cx="262" cy="118" r="12" fill="#e8b84a" stroke="#000" stroke-width="2"/></svg>';
 
-M.boot=function(el){root=el;SE.store.apply();var B=SE.brand||{},st=G.document.documentElement.style;if(B.field||(SE.assets&&SE.assets.map))st.setProperty('--mapbg','url("'+(B.field||SE.assets.map)+'")');if(B.menu)st.setProperty('--menubg','url("'+B.menu+'")');M.title();};
+M.boot=function(el){root=el;SE.store.apply();var B=SE.brand||{},st=G.document.documentElement.style;if(B.field||(SE.assets&&SE.assets.map))st.setProperty('--mapbg','url("'+(B.field||SE.assets.map)+'")');var MB=(SE.assets&&SE.assets.map)||B.menu;if(MB)st.setProperty('--menubg','url("'+MB+'")');M.title();};
 M.title=function(){
   flow.series=null;
   screen((SE.brand&&SE.brand.cover?'<div class="stage"><img class="stbg" alt="" src="'+SE.brand.cover+'"><img class="sttitle" alt="Star Evolution" src="'+SE.brand.title+'"></div>':(SE.assets&&SE.assets.title?'<img class="cover" alt="Star Evolution title art" src="'+SE.assets.title+'">':HERO))+'<h1 class="logo sr">STAR EVOLUTION</h1><p class="sub">Take land. Take risks. Take the stars.</p>'+
