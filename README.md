@@ -95,3 +95,12 @@ The arrow button at the left of the bottom bar collapses the whole panel to the 
 
 ## Map first (phones)
 Defaults: top info is a thin overlay on the map (Options > Layout: bar instead), the bottom panel is collapsed and does not open by itself (it still opens for guided turns), and everything that used the panel shows as a chip on the map: Attack / Cancel for the attack preview, Cancel while picking a card target, Move / Cancel for movement, and hints with OK. Pinch to zoom, drag to pan, Fit button to reset (mouse wheel zooms on desktop); the zoom window uses the spare screen height in portrait. Movement now needs a confirm: tap the tile, then tap it again or press Move (Options: Confirm moves; guided turns skip the confirm). Settings: topMode, panelCollapsed (null = auto), zoom, confirmMove.
+
+## Unit chip and Special menu (phones, panel collapsed)
+Tapping one of your units shows a chip on the map with what it can do where it stands (Claim with its HP cost, Open chest, Talk or Visit, Investigate under fog). Tap the unit again to hide the chip. After a move the chip shows by itself. In Standard mode the chip has a Special button that swaps it for that unit's specials: Barrier, Trap, Dismantle, Hazard (Cultists), the Group action, Soul Purge (commander), Calm god; unavailable ones are dimmed and tell you why when tapped. Code: SE.ui.unitChip in js/ui.js.
+
+## Map info on demand
+Unit data on the map (HP bar, level, barrier flame) can show only for the selected unit, the attack target, a hovered unit, or a tapped one. Setting `mapInfo`: `auto` (on demand on phones, always on desktop), `tap` (always on demand), `always`. Toggle in Options (Display) or the Info tab of the bottom panel. Land and chest numbers stay visible.
+
+## Attack chip
+The attack preview chip has a row of the unit's usable techniques; tap one to switch the preview.
