@@ -1971,6 +1971,36 @@ R.modesRound=function(st){
     ls.forEach(function(s){R.alive(st,s).forEach(function(u){u.hp-=Math.min(C.storm,Math.max(0,u.hp-1));});});log(st,"CHAOS: a storm lashes the leader's units for "+C.storm+" each (never below 1 HP).");}
   R.emit&&R.emit(st,{t:"chaos",ev:ev});
 };
+
+// ---- Visit request: ask the Magician to come closer (any mode). Free, once per 2 rounds per side, coin flip if the other side already asked this round. ----
+R.visitState=function(st){return st.visit||(st.visit={last:{A:-9,B:-9},round:0,flips:0});};
+function visitSpots(st,side){
+  var mine=R.alive(st,side).slice().sort(function(a,b){return H.dist(a,st.npc)-H.dist(b,st.npc);}),out=[];
+  mine.forEach(function(u){var best=[];
+    H.neighbors(u).forEach(function(h){var o=H.toOffset(h.q,h.r),k=H.key(h.q,h.r);
+      if(o.c<0||o.c>=st.cols||o.row<0||o.row>=st.rows)return;
+      if(st.water[k]||(k in st.land)||(k in st.chests)||R.unitAt(st,h.q,h.r))return;best.push(h);});
+    if(best.length&&!out.length)out=best;});
+  return out;
+}
+R.canVisit=function(st,side){
+  if(st.over||st.npc.dead)return {ok:false,msg:"She is gone."};var V=R.visitState(st);
+  if(st.round-V.last[side]<2)return {ok:false,msg:"You asked recently. Wait until round "+(V.last[side]+2)+"."};
+  var mine=R.alive(st,side);if(!mine.length)return {ok:false,msg:"No units."};
+  if(mine.some(function(u){return H.dist(u,st.npc)<=1;}))return {ok:false,msg:"She is already next to you."};
+  if(!visitSpots(st,side).length)return {ok:false,msg:"No free tile near your units."};
+  return {ok:true};
+};
+R.visit=function(st,side){
+  var c=R.canVisit(st,side);if(!c.ok)return c;var V=R.visitState(st),nm=st.names[side];
+  if(V.round===st.round&&V.by&&V.by!==side){
+    if(st.rng()>=0.5){log(st,nm+" asks for a visit, but "+st.npc.name+" stays with the other side this round (coin flip).","info");return {ok:true,moved:false,msg:"Coin flip lost. She stays where she is. You can ask again later."};}
+  }
+  var spots=visitSpots(st,side),p=spots[Math.floor(st.rng()*spots.length)];
+  st.npc.q=p.q;st.npc.r=p.r;V.last[side]=st.round;V.round=st.round;V.by=side;
+  log(st,nm+" asks for a visit and "+st.npc.name+" comes closer.","info");R.emit&&R.emit(st,{t:"visit",side:side});
+  return {ok:true,moved:true,msg:"She comes closer."};
+};
 })(typeof window!=='undefined'?window:globalThis);
 </script>
 <script>// Basic CPU: priority list with small jitter, no lookahead. (Harder Standard CPU is Pass C.)
@@ -2078,6 +2108,7 @@ AI.apply=function(st,a){
 // Play a whole turn at once (used by the batch sim and tests).
 AI.playTurn=function(st){
   var guard=60,a;
+  if(R.canVisit&&AI.godWanted(st,st.turn)&&R.alive(st,st.turn).every(function(u){return H.dist(u,st.npc)>2;})&&R.canVisit(st,st.turn).ok)R.visit(st,st.turn);
   while(!st.over&&guard-->0&&!(st.std&&st.std.pending)&&(a=AI.nextAction(st))){var r=AI.apply(st,a);if(!r.ok&&a.unit){a.unit.idle=true;}}
   if(!st.over)R.endTurn(st);
 };
@@ -3383,7 +3414,7 @@ function expSteps(){var X=SE.data.expert;return [
   {id:"barrier",text:"Barriers: each faction has a flame colour. Blue adds HP and soaks pierce and hazards, red adds HP, silver reflects some damage. Select a unit to see its barrier line.",skip:function(v,st){return !R.expOn(st,"barrier");},ack:true}];}
 // Guided turns lock input to the current step: only the listed buttons (and card plays) work until the step is done or the guide is skipped.
 // Selecting, moving, attacking and reading cards always work. Multi-turn steps (the god) also allow End turn so the match can move on.
-var ALLOW={cards:{cards:true,acts:[]},god:{acts:["talk","calm","end"]},karma:{acts:[]},trap:{acts:["trap"]},hazard:{acts:["hazard"]},group:{acts:["group"]},barrier:{acts:[]},end:{acts:["end"]}};
+var ALLOW={cards:{cards:true,acts:[]},god:{acts:["talk","calm","visit","end"]},karma:{acts:[]},trap:{acts:["trap"]},hazard:{acts:["hazard"]},group:{acts:["group"]},barrier:{acts:[]},end:{acts:["end"]}};
 C.ok=function(v,kind,arg){
   var c=v.coach;if(!c||!c.lock)return true;if(kind==="act"&&(arg==="burn"))return true;
   var i=C.info(v);if(!i)return true;var al=ALLOW[i.step.id]||{acts:[]},ok=kind==="card"?!!al.cards:al.acts.indexOf(arg)>=0;
@@ -3726,6 +3757,7 @@ SE.ui={
             (st.exp&&(R.expOn(st,"hazards")||R.expOn(st,"traps"))?'<button data-act="dismantle" class="'+(R.canDismantle(st,u).ok?"primary":"dim")+'">Dismantle<br><small>hazard/trap</small></button>':'')+
             (st.std&&R.isCommander(u)?'<button data-act="purge" class="'+(R.canPurge(st,u).ok?"primary":"dim")+'">Soul Purge<br><small>-'+SE.data.standard.purge.karma+' karma</small></button>':'');
     }
+    if(R.canVisit)acts+='<button data-act="visit" class="'+(my&&R.canVisit(st,SE.ui.me(v)).ok?"primary":"dim")+'" title="Ask '+esc(st.npc.name)+' to come next to your closest unit. Free, once every 2 rounds. If the other side asked this round it is a coin flip.">Visit<br><small>free \u00b7 1 per 2 rounds</small></button>';
     var allDone=my&&R.alive(st,SE.ui.me(v)).every(function(x){return x.acted&&x.moved;});
     if(st.exp&&R.expOn(st,"god"))acts+='<button data-act="calm" class="'+(my&&R.canSacrifice(st,SE.ui.me(v)).ok?"primary":"dim")+'" title="Pay '+SE.data.expert.god.sacrifice.points+' points to lower the god\'s anger by '+SE.data.expert.god.sacrifice.calm+'. Once per game.">Calm god<br><small>-'+SE.data.expert.god.sacrifice.points+' pts \u00b7 '+(SE.data.expert.god.sacrifice.uses-st.exp.sacUsed.A)+' left</small></button>';
     if(st.exp&&R.expOn(st,"group"))acts+='<button data-act="group" class="'+(my&&R.canGroup(st,SE.ui.me(v)).ok?"primary":"dim")+'" title="'+esc(R.canGroup(st,SE.ui.me(v)).ok?"":(R.canGroup(st,SE.ui.me(v)).msg||""))+'">'+esc(R.groupName(st,SE.ui.me(v)))+'<br><small>group \u00b7 '+(SE.data.expert.group.uses-st.exp.groupUsed.A)+' left</small></button>';
@@ -3865,6 +3897,7 @@ SE.ui={
     if(v.stage&&!SE.stage.ok(v,"act",a))return;
     if(a==="hazard"){SE.stdui.hazardMenu(v);return;}
     if(a==="group"){SE.stdui.groupMenu(v);return;}
+    if(a==="visit"){var vr=R.visit(st,SE.ui.me(v));toast(vr.msg);SE.ui.afterAction(v);return;}
     if(a==="calm"){var cr=R.godSacrifice(st,SE.ui.me(v));if(!cr.ok)toast(cr.msg);else toast("Offering made. The god calms.");SE.ui.afterAction(v);return;}
     if(!u||u.side!==SE.ui.me(v)){toast("Select one of your units first.");return;}
     if(a==="trap"){SE.stdui.trapMenu(v,u);return;}
