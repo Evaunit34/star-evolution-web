@@ -87,6 +87,11 @@ Any mode: the Summon button ("Summon to talk") (free, no action) asks The Magici
 ## Phone layout
 Under 900px wide the panel is compact: a one-line unit summary and a bottom bar with Action / Talk / Cards / Group / Info and End turn. Tapping a tab opens that section above the bar; picking an attack, card or action closes it. Selecting a unit opens Action. Landscape phones put the map on the left and the panel on the right. Desktop keeps the full panel. Code: panelHtml and render in js/ui.js (sections have data-s, the bar has data-dock), CSS at the end of style.css.
 
+## Mobile layout is the default (also in browsers)
+The game opens in the phone UI everywhere, including on computers: the thin top bar, the dock bar with Team and End turn, the collapsed panel, unit chips on the map and hover info (a mouse hover stands in for a tap), at full window size. Players who want more on screen can switch to the **desktop layout** (side panel with cards, karma, unit stats): the link on the title screen, Options > Layout on this computer, or Menu > Layout during a match (instant, no reload; remembered). Computers also get a short toast in their first three matches saying how to switch; "Show first-time pointers again" in Options resets it. A third choice, Phone-size frame, shows the game in a phone-shaped box (reloads). Real phones never see these controls.
+
+How it works: `js/phone.js` switches the stylesheet's 899px / 900px media rules on at runtime (`SE.phone.narrow()` for the matching JS checks), so no layout is duplicated. Setting `layout`: "mobile" (default, "auto" is treated the same) | "desktop" | "phone".
+
 ## Minimal phone UI
 On phones the top bar shows only the two factions with scores, Goal and Round; the ... button reveals the clock, turn, god meter and Menu. Technique buttons show name and cost only (Options > Button descriptions: Auto / Short / Full; Auto is Full on desktop). Picking an attack shows a tag on the closest visible enemy: average damage (minus the target's DEF), "KO" if it would defeat them, or "N too far" (Options > Attack tags). The long tip is behind the ? button.
 
