@@ -3773,10 +3773,12 @@ SE.ui={
   isMyTurn:function(v){return v.st.turn===SE.ui.me(v)&&!v.st.over&&!v.cpuBusy&&!v.paused&&!v.overlay;},
   sunit:function(v){return v.sel?R.unitById(v.st,v.sel):null;},
   // things the player has already done once never get a pointer again (saved in settings.done)
-  did:function(v,key){var d=SE.store.settings().done||{};if(d[key])return;d=JSON.parse(JSON.stringify(d));d[key]=1;SE.store.set("done",d);if(v&&v.goalKey==="g_"+key){v.goalKey=null;}},
-  isDone:function(key){var d=SE.store.settings().done||{};return !!d[key];},
+  did:function(v,key){if(v){v.doneM=v.doneM||{};v.doneM[key]=1;}if(v&&v.goalKey==="g_"+key)v.goalKey=null;var d=SE.store.settings().done||{};if(d[key])return;d=JSON.parse(JSON.stringify(d));d[key]=1;SE.store.set("done",d);if(v&&v.goalKey==="g_"+key){v.goalKey=null;}},
+  // "Keep showing pointers every match": done is then tracked per match instead of saved for good
+  isDone:function(key){if(SE.store.settings().pointerAlways){var c=SE.ui.cur;return !!(c&&c.doneM&&c.doneM[key]);}var d=SE.store.settings().done||{};return !!d[key];},
   // one first-time pointer at a time, for the first thing not done yet: an arrow on the map (or a pulsing button), text if the player prefers
   goal:function(v){var st=v.st,me=SE.ui.me(v),S0=SE.store.settings();
+    if(S0.pointer==="off"){v.goalKey=null;return;}
     if(!S0.hints||!st.opts.hints||v.stage||v.coach)return;
     if(v.goalKey){if(SE.ui.isDone(v.goalKey.slice(2))||st.round-v.goalStart>=4)v.goalKey=null;else return;}
     if(v.goalRound===st.round||!SE.ui.isMyTurn(v))return;
@@ -3786,7 +3788,7 @@ SE.ui={
     for(var i=0;i<list.length;i++){var k=list[i][0];if(list[i][1]&&!D(k)&&!v.hintsShown["g_"+k]){v.hintsShown["g_"+k]=1;v.goalRound=st.round;v.goalStart=st.round;v.goalKey="g_"+k;
       if((S0.pointer||"arrow")!=="arrow")v.hintText=HINTS["g_"+k];return;}}},
   // where the current pointer points: a map tile, or a button to pulse
-  goalTarget:function(v){var k=v.goalKey&&v.goalKey.slice(2);if(!k||(SE.store.settings().pointer||"arrow")==="text")return null;
+  goalTarget:function(v){var k=v.goalKey&&v.goalKey.slice(2);if(!k||["text","off"].indexOf(SE.store.settings().pointer||"arrow")>=0)return null;
     var st=v.st,me=SE.ui.me(v),mine=R.alive(st,me),ref=SE.ui.sunit(v);ref=ref&&ref.side===me?ref:mine[0];if(!ref)return null;
     var lbl={claim:"Capture",attack:"Attack",chest:"Chest",talk:"Talk",summon:"Summon",card:"Cards",trap:"Trap",hazard:"Hazard",group:"Group"}[k];
     function near(l){return l.slice().sort(function(a,b){return H.dist(ref,a)-H.dist(ref,b);})[0];}
@@ -4076,7 +4078,7 @@ SE.ui={
     var colN=SE.ui.collapsed(v);
     v._bar='<div class="dockbar" role="toolbar" aria-label="Actions"><button class="dkcol" id="btn-dkcol" aria-label="'+(colN?"Show panel":"Hide panel")+'" aria-expanded="'+(!colN)+'">'+(colN?"\u25B2":"\u25BC")+'</button><span class="dkinfo">'+((u&&u.side===SE.ui.me(v))?esc(u.name)+' \u00b7 HP '+u.hp+'/'+u.maxHp:'')+'</span>'+tabs.map(function(t){return '<button data-dock="'+t[0]+'" class="'+(dock===t[0]?"sel":"")+'" aria-expanded="'+(dock===t[0])+'">'+t[1]+'</button>';}).join("")+
       (SE.ui.actsOn(v)?'<button data-acts="t" class="dkteam">Team <small>'+SE.ui.teamLeft(v)+' left</small></button>':'')+'<button data-act="end" class="'+(allDone?"primary pulse":"primary")+'"'+(my?"":" disabled")+'>End turn</button></div>';
-    return '<div class="panel">'+(SE.ui.actsOn(v)?'<div class="actsrow"><button class="small" data-acts="t">Team \u00b7 '+SE.ui.teamLeft(v)+' left</button>'+((u&&u.side===SE.ui.me(v))?'<button class="small" data-acts="u">Actions</button>':'')+'</div>':'')+(v.preview&&my?SE.ui.previewHtml(v):"")+(tipH&&(SE.ui.full()||v.tipOpen)?'<div class="tiprow">'+tipH+'</div>':"")+uline+'<div class="sec" data-s="i">'+info+'<label class="mi">Enemy info <select id="i-minfo">'+[["auto","Auto"],["tap","Tap/hover on map"],["strip","Strip above map"],["always","Always on map"]].map(function(o){return '<option value="'+o[0]+'"'+((SE.store.settings().mapInfo||"auto")===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select></label>'+'</div>'+
+    return '<div class="panel">'+(SE.ui.actsOn(v)?'<div class="actsrow"><button class="small" data-acts="t">Team \u00b7 '+SE.ui.teamLeft(v)+' left</button>'+((u&&u.side===SE.ui.me(v))?'<button class="small" data-acts="u">Actions</button>':'')+'</div>':'')+(v.preview&&my?SE.ui.previewHtml(v):"")+(tipH&&(SE.ui.full()||v.tipOpen)?'<div class="tiprow">'+tipH+'</div>':"")+uline+'<div class="sec" data-s="i">'+info+'<label class="mi"><input type="checkbox" id="i-ptr"'+(SE.store.settings().pointer!=="off"?' checked':'')+'> First-time pointers</label><label class="mi">Enemy info <select id="i-minfo">'+[["auto","Auto"],["tap","Tap/hover on map"],["strip","Strip above map"],["always","Always on map"]].map(function(o){return '<option value="'+o[0]+'"'+((SE.store.settings().mapInfo||"auto")===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select></label>'+'</div>'+
       '<div class="sec" data-s="a"><div class="actions">'+grp.a+'</div></div><div class="sec" data-s="t"><div class="actions">'+grp.t+'</div></div>'+(hasG?'<div class="sec" data-s="g"><div class="actions">'+grp.g+'</div></div>':'')+
       '<div class="sec" data-s="e"><div class="actions">'+grp.e+'</div></div>'+(v.stage?'':'<div class="sec" data-s="l"><div class="log">'+logHtml+'</div></div>')+'</div>';
   },
@@ -4138,6 +4140,7 @@ SE.ui={
     root.querySelectorAll("g.ug").forEach(function(g){var id=+g.getAttribute("data-unit");
       g.addEventListener("mouseenter",function(){g.classList.add("show");if(SE.ui.touchy())SE.ui.fadeInfo(v,id);});
       g.addEventListener("mouseleave",function(){if(!(v.infoUid===id||v.sel===id))g.classList.remove("show");});});
+    var ip=$("#i-ptr",root);if(ip)ip.addEventListener("change",function(e){SE.store.set("pointer",e.target.checked?"arrow":"off");if(!e.target.checked){v.goalKey=null;v.hintText=null;}SE.ui.render(v);});
     var mi=$("#i-minfo",root);if(mi)mi.addEventListener("change",function(e){SE.store.set("mapInfo",e.target.value);SE.ui.render(v);});
     SE.ui.bindActs(v);SE.ui.pulseEls(v);
     var sb=$("#btn-strip",root);if(sb)sb.addEventListener("click",function(){SE.store.set("stripOpen",SE.store.settings().stripOpen===false);SE.ui.render(v);});
@@ -4596,7 +4599,8 @@ M.options=function(back){
    '<div class="row"><label>Unit data on the map <select id="o-minfo"><option value="auto"'+(s.mapInfo==="auto"||!s.mapInfo?" selected":"")+'>Auto (hover/tap on phones)</option><option value="tap"'+(s.mapInfo==="tap"?" selected":"")+'>Hover/tap only</option><option value="strip"'+(s.mapInfo==="strip"?" selected":"")+'>Strip above the map</option><option value="always"'+(s.mapInfo==="always"?" selected":"")+'>Always show</option></select></label></div>'+
    '<div class="row"><label><input type="checkbox" id="o-striptap"'+(s.stripTap?" checked":"")+'> Also show info when tapping or hovering enemies and NPCs while the strip is on</label></div>'+
    '<div class="row"><label><input type="checkbox" id="o-acts"'+(s.actsUi!==false?" checked":"")+'> Actions and Team sheet (what each unit can do this turn)</label></div>'+
-   '<div class="row"><label>First-time pointers <select id="o-ptr"><option value="arrow"'+((s.pointer||"arrow")==="arrow"?" selected":"")+'>Arrows</option><option value="both"'+(s.pointer==="both"?" selected":"")+'>Arrows and text</option><option value="text"'+(s.pointer==="text"?" selected":"")+'>Text only</option></select></label></div>'+
+   '<div class="row"><label>First-time pointers <select id="o-ptr"><option value="arrow"'+((s.pointer||"arrow")==="arrow"?" selected":"")+'>Arrows</option><option value="both"'+(s.pointer==="both"?" selected":"")+'>Arrows and text</option><option value="text"'+(s.pointer==="text"?" selected":"")+'>Text only</option><option value="off"'+(s.pointer==="off"?" selected":"")+'>Off</option></select></label></div>'+
+   '<div class="row"><label><input type="checkbox" id="o-ptralways"'+(s.pointerAlways?" checked":"")+'> Keep showing pointers every match (even for things I have done before)</label></div>'+
    '<div class="row"><label><input type="checkbox" id="o-arrowbig"'+(s.arrowBig?" checked":"")+'> Larger pointer arrows</label></div>'+
    '<div class="row"><label><input type="checkbox" id="o-arrowstill"'+(s.arrowStill?" checked":"")+'> Keep pointer arrows still (no bouncing)</label></div>'+
    '<div class="row"><button class="small" id="o-resetdone">Show first-time pointers again</button></div>'+
@@ -4631,6 +4635,7 @@ M.options=function(back){
   $("#o-striptap").addEventListener("change",function(e){SE.store.set("stripTap",e.target.checked);});
   $("#o-acts").addEventListener("change",function(e){SE.store.set("actsUi",e.target.checked);});
   $("#o-ptr").addEventListener("change",function(e){SE.store.set("pointer",e.target.value);});
+  $("#o-ptralways").addEventListener("change",function(e){SE.store.set("pointerAlways",e.target.checked);});
   $("#o-arrowbig").addEventListener("change",function(e){SE.store.set("arrowBig",e.target.checked);});
   $("#o-arrowstill").addEventListener("change",function(e){SE.store.set("arrowStill",e.target.checked);});
   $("#o-resetdone").addEventListener("click",function(e){SE.store.set("done",{});e.target.textContent="Done: they will show again";});

@@ -129,3 +129,9 @@ Accessibility (Options): pointer style (Arrows / Arrows and text / Text only), l
 
 ## Info fades after a few seconds
 Tapped unit info no longer hangs: the pop-up tip and the on-map data (HP bar, level) fade about 4 seconds after a tap, except for your selected unit and the attack target. On touch devices hover-style tips also time out. With a mouse, hovering still shows data for as long as you hover.
+
+## Pointer on/off
+`pointer` setting: Arrows, Arrows and text, Text only, or Off. The Info tab of the panel has a quick "First-time pointers" checkbox (on = Arrows, off = Off), and Options has the full list. The choice is saved and applies to every match until you change it.
+
+## Keep showing pointers every match
+Setting `pointerAlways` (Options: "Keep showing pointers every match"). Off (default): a pointer disappears for good once you have done the thing. On: "done" is tracked per match only, so the pointers walk through capture, attack, chest, talk and so on again in every match. Pointer style, size, still-arrows and the on/off checkbox work the same way in both.
